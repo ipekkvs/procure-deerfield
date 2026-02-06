@@ -34,7 +34,7 @@ export function RequestCard({ request, className, compact = false }: RequestCard
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold">{formatCurrency(request.amount)}</span>
+          <span className="text-sm font-semibold">{formatCurrency(request.budgetedAmount)}</span>
           <StatusBadge variant={getStatusColor(request.status)} dot={false}>
             {getStatusLabel(request.status)}
           </StatusBadge>
@@ -81,7 +81,7 @@ export function RequestCard({ request, className, compact = false }: RequestCard
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className="text-lg font-bold">{formatCurrency(request.amount)}</span>
+          <span className="text-lg font-bold">{formatCurrency(request.budgetedAmount)}</span>
           <StatusBadge variant={getStatusColor(request.status)}>
             {getStatusLabel(request.status)}
           </StatusBadge>

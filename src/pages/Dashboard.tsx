@@ -31,7 +31,7 @@ const Dashboard = () => {
   // Calculate total spend in pending
   const pendingSpend = requests
     .filter(r => r.status === 'pending')
-    .reduce((sum, r) => sum + r.amount, 0);
+    .reduce((sum, r) => sum + r.budgetedAmount, 0);
   
   // Get upcoming renewals (next 60 days)
   const upcomingRenewals = renewals
