@@ -8,8 +8,6 @@ import {
   RefreshCw,
   Building2,
   Settings,
-  Bell,
-  Search,
   ChevronLeft,
   ChevronRight,
   User,
@@ -17,7 +15,6 @@ import {
   BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +25,8 @@ import {
 import { requests, renewals, getCurrentUser } from "@/lib/mockData";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { preApprovedVendors } from "@/lib/riskScoring";
+import { NotificationsPopover } from "@/components/NotificationsPopover";
+import { HeaderSearchPopover } from "@/components/HeaderSearchPopover";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -261,25 +260,12 @@ export function AppLayout({ children }: AppLayoutProps) {
         {/* Top bar */}
         <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4 flex-1 max-w-xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search requests, vendors..."
-                className="pl-10 bg-muted/50 border-0 focus-visible:ring-1"
-              />
-            </div>
+            <HeaderSearchPopover />
           </div>
           
           <div className="flex items-center gap-3">
             <RoleSwitcher onRoleChange={handleRoleChange} />
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              {notifications > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-xs font-semibold rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
-                  {notifications}
-                </span>
-              )}
-            </Button>
+            <NotificationsPopover />
           </div>
         </header>
 
