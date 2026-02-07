@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StepProps } from "./types";
+import { FileUpload } from "./FileUpload";
 import { 
   Urgency, 
   getDepartmentBudget, 
@@ -10,7 +11,7 @@ import {
   getDepartmentLabel
 } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
-import { Upload, Calendar, DollarSign, Info } from "lucide-react";
+import { Calendar, DollarSign, Info } from "lucide-react";
 
 const urgencyOptions: { value: Urgency; label: string; description: string }[] = [
   { value: 'low', label: 'Low', description: 'No rush - 30 days' },
@@ -50,15 +51,10 @@ export function RequirementsStep({ formData, updateFormData }: StepProps) {
         <p className="text-sm text-muted-foreground mt-1 mb-4">
           Upload any product documentation, proposals, quotes, or related materials
         </p>
-        <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-          <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Drag & drop files here, or click to browse
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            PDF, DOC, DOCX, XLS up to 10MB
-          </p>
-        </div>
+        <FileUpload
+          files={formData.uploadedFiles}
+          onFilesChange={(files) => updateFormData({ uploadedFiles: files })}
+        />
       </div>
 
       {/* Timeline & Budget */}

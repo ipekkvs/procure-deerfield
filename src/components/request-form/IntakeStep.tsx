@@ -157,9 +157,9 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
         </div>
       </div>
 
-      {/* SaaS-specific: Licenses/Seats */}
-      {formData.category === 'saas' && (
-        <div className="rounded-xl border bg-card p-6">
+      {/* SaaS-specific: Licenses/Seats - Show when category is SaaS OR detected as SaaS */}
+      {(formData.category === 'saas' || detectedCategory === 'saas') && (
+        <div className="rounded-xl border bg-card p-6 animate-fade-in">
           <Label htmlFor="licensesSeatsCount">Number of Licenses/Seats Required</Label>
           <p className="text-sm text-muted-foreground mt-1 mb-3">
             e.g., Salesforce licenses = 90
