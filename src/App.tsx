@@ -11,6 +11,7 @@ import RequestDetail from "./pages/RequestDetail";
 import Renewals from "./pages/Renewals";
 import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Settings />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <AppLayout>
+                <Reports />
               </AppLayout>
             }
           />
