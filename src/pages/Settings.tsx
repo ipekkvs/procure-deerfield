@@ -42,7 +42,7 @@ const Settings = () => {
           </div>
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" defaultValue="alex@company.com" className="mt-1.5" />
+            <Input id="email" type="email" defaultValue="alex@deerfield.com" className="mt-1.5" />
           </div>
           <div>
             <Label htmlFor="department">Department</Label>
@@ -101,7 +101,7 @@ const Settings = () => {
         <div className="space-y-4">
           <div>
             <Label htmlFor="orgName">Organization Name</Label>
-            <Input id="orgName" defaultValue="Acme Corporation" className="mt-1.5" />
+            <Input id="orgName" defaultValue="Deerfield" className="mt-1.5" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
