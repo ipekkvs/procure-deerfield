@@ -237,7 +237,20 @@ export const users: User[] = [
   { id: '5', email: 'compliance@demo.com', name: 'David Lee', role: 'compliance', department: 'business_operations', isDepartmentLeader: false },
   { id: '6', email: 'admin@demo.com', name: 'Chris Taylor', role: 'admin', department: 'business_operations', isDepartmentLeader: true },
   { id: '7', email: 'dept_leader@demo.com', name: 'Lisa Park', role: 'department_leader', department: 'deerfield_intelligence', isDepartmentLeader: true },
+  { id: '8', email: 'cio@demo.com', name: 'Robert Martinez', role: 'cio', department: 'deerfield_intelligence', isDepartmentLeader: false },
 ];
+
+// Current user state for demo purposes (allows role switching)
+let currentUserIndex = 0;
+
+export const setCurrentUserByRole = (role: UserRole): void => {
+  const userIndex = users.findIndex(u => u.role === role);
+  if (userIndex !== -1) {
+    currentUserIndex = userIndex;
+  }
+};
+
+export const getCurrentUser = (): User => users[currentUserIndex];
 
 // ============= SAMPLE REQUESTS (Updated for Deerfield workflow) =============
 export const requests: PurchaseRequest[] = [
@@ -1157,7 +1170,6 @@ export const approvals: Approval[] = [
 ];
 
 // ============= HELPER FUNCTIONS =============
-export const getCurrentUser = (): User => users[0]; // Default to requester for demo
 
 export const getDepartmentBudget = (department: Department): DepartmentBudget | undefined => {
   return departmentBudgets.find(b => b.department === department);
