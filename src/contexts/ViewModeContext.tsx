@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { UserRole, getCurrentUser } from '@/lib/mockData';
 
 export type ViewMode = 'individual' | 'role';
@@ -12,6 +12,8 @@ interface ViewModeContextType {
   // Labels for the current user's views
   individualLabel: string;
   roleLabel: string;
+  // Force refresh when role changes
+  refreshContext: () => void;
 }
 
 const ViewModeContext = createContext<ViewModeContextType | undefined>(undefined);
@@ -41,12 +43,20 @@ const roleLabels: Record<UserRole, string> = {
 
 export function ViewModeProvider({ children }: { children: React.ReactNode }) {
   const [viewMode, setViewMode] = useState<ViewMode>('role');
+  const [refreshKey, setRefreshKey] = useState(0);
   
-  const currentUser = getCurrentUser();
+  // Force re-read of current user when refreshKey changes
+  const currentUser = useMemo(() => getCurrentUser(), [refreshKey]);
   const canSwitchViews = dualRoles.includes(currentUser.role);
   
   const toggleViewMode = useCallback(() => {
     setViewMode(prev => prev === 'individual' ? 'role' : 'individual');
+  }, []);
+
+  const refreshContext = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+    // Reset to role view when switching roles
+    setViewMode('role');
   }, []);
 
   const individualLabel = 'My Requests';
@@ -61,6 +71,7 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
         canSwitchViews,
         individualLabel,
         roleLabel,
+        refreshContext,
       }}
     >
       {children}
