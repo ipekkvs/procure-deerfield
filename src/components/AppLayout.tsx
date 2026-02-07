@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -27,20 +27,80 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { requests, renewals, getCurrentUser } from "@/lib/mockData";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { preApprovedVendors } from "@/lib/riskScoring";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "New Request", href: "/new-request", icon: Plus },
-  { name: "Approvals", href: "/approvals", icon: ClipboardCheck, badge: true },
-  { name: "Renewals", href: "/renewals", icon: RefreshCw },
-  { name: "Vendors", href: "/vendors", icon: Building2 },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+// Helper to calculate role-specific approval counts
+function getApprovalCount(role: string, department?: string): number {
+  switch (role) {
+    case 'cio':
+      return requests.filter(r => 
+        r.status === 'pending' && (
+          r.budgetedAmount > 50000 ||
+          r.title.toLowerCase().includes('ai') ||
+          r.department === 'investment'
+        )
+      ).length;
+    case 'finance':
+      return requests.filter(r => 
+        r.status === 'pending' && (
+          r.budgetedAmount >= 10000 || 
+          r.budgetedAmount > 25000
+        )
+      ).length;
+    case 'compliance':
+      return requests.filter(r => 
+        r.status === 'pending' && !r.complianceApproved && (
+          r.description.toLowerCase().includes('patient') ||
+          r.category === 'saas'
+        )
+      ).length;
+    case 'it':
+      return requests.filter(r => 
+        r.status === 'pending' && !r.itApproved && (
+          !r.vendorId ||
+          !preApprovedVendors.some(v => r.title.toLowerCase().includes(v.toLowerCase()))
+        )
+      ).length;
+    case 'director_operations':
+      return requests.filter(r => 
+        r.status === 'pending' && (
+          (r.budgetedAmount > 50000 && r.currentStep === 'negotiation') ||
+          r.daysInCurrentStage > 5
+        )
+      ).length;
+    case 'department_leader':
+      return requests.filter(r => 
+        r.status === 'pending' && 
+        r.department === department &&
+        (r.currentStep === 'department_pre_approval' || r.currentStep === 'department_final_approval')
+      ).length;
+    case 'requester':
+    default:
+      return requests.filter(r => r.status === 'needs_info').length;
+  }
+}
+
+// Helper to calculate dashboard alert count (urgent items)
+function getDashboardAlertCount(role: string): number {
+  switch (role) {
+    case 'cio':
+    case 'finance':
+    case 'compliance':
+    case 'it':
+    case 'director_operations':
+    case 'department_leader':
+      // Show urgent alerts count (over-budget or stuck > 3 days)
+      return requests.filter(r => 
+        r.status === 'pending' && (r.daysInCurrentStage > 3 || r.budgetedAmount > 25000)
+      ).length > 0 ? 1 : 0; // Show indicator if any urgent
+    default:
+      return requests.filter(r => r.status === 'needs_info').length;
+  }
+}
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -52,18 +112,35 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Force re-render when role changes
   const handleRoleChange = useCallback(() => {
     forceUpdate({});
-    // Navigate to dashboard to show role-specific view
     if (location.pathname !== '/') {
       navigate('/');
     }
   }, [navigate, location.pathname]);
   
-  // Count pending approvals
-  const pendingApprovals = requests.filter(r => r.status === 'pending').length;
+  // Role-specific counts
+  const approvalCount = useMemo(() => 
+    getApprovalCount(currentUser.role, currentUser.department),
+    [currentUser.role, currentUser.department]
+  );
   
-  // Count pending notifications (renewals needing attention + requests needing info)
+  const dashboardAlertCount = useMemo(() => 
+    getDashboardAlertCount(currentUser.role),
+    [currentUser.role]
+  );
+  
+  // Count pending notifications
   const notifications = renewals.filter(r => r.reviewStatus !== 'completed').length + 
     requests.filter(r => r.status === 'needs_info').length;
+
+  const navigation = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard, badge: dashboardAlertCount > 0 },
+    { name: "New Request", href: "/new-request", icon: Plus },
+    { name: "Approvals", href: "/approvals", icon: ClipboardCheck, badgeCount: approvalCount },
+    { name: "Renewals", href: "/renewals", icon: RefreshCw },
+    { name: "Vendors", href: "/vendors", icon: Building2 },
+    { name: "Reports", href: "/reports", icon: BarChart3 },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
 
   return (
     <div className="min-h-screen flex w-full bg-background">
@@ -103,7 +180,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -113,17 +190,23 @@ export function AppLayout({ children }: AppLayoutProps) {
                 {!collapsed && (
                   <>
                     <span className="flex-1">{item.name}</span>
-                    {item.badge && pendingApprovals > 0 && (
+                    {item.badgeCount && item.badgeCount > 0 && (
                       <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-primary text-primary-foreground">
-                        {pendingApprovals}
+                        {item.badgeCount}
                       </span>
+                    )}
+                    {item.badge && !item.badgeCount && (
+                      <span className="w-2 h-2 rounded-full bg-destructive" />
                     )}
                   </>
                 )}
-                {collapsed && item.badge && pendingApprovals > 0 && (
-                  <span className="absolute left-10 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-primary text-primary-foreground">
-                    {pendingApprovals}
+                {collapsed && item.badgeCount && item.badgeCount > 0 && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-primary text-primary-foreground">
+                    {item.badgeCount}
                   </span>
+                )}
+                {collapsed && item.badge && !item.badgeCount && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />
                 )}
               </NavLink>
             );
@@ -146,7 +229,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 {!collapsed && (
                   <div className="flex-1 text-left">
                     <p className="text-sm font-medium text-foreground">{currentUser.name}</p>
-                    <p className="text-xs text-sidebar-foreground capitalize">{currentUser.role}</p>
+                    <p className="text-xs text-sidebar-foreground capitalize">{currentUser.role.replace('_', ' ')}</p>
                   </div>
                 )}
               </button>
