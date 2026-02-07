@@ -386,41 +386,50 @@ const Renewals = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="rounded-xl border bg-card p-5 flex flex-col">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
             <AlertTriangle className="w-4 h-4 text-status-error" />
-            Critical (&lt;30 days)
+            <span>Critical</span>
           </div>
-          <p className="text-2xl font-bold text-status-error">{criticalRenewals.length}</p>
+          <p className="text-3xl font-bold text-status-error tabular-nums">{criticalRenewals.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">&lt;30 days</p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+        
+        <div className="rounded-xl border bg-card p-5 flex flex-col">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
             <Bell className="w-4 h-4 text-status-warning" />
-            Urgent (30-90 days)
+            <span>Urgent</span>
           </div>
-          <p className="text-2xl font-bold text-status-warning">{urgentRenewals.length}</p>
+          <p className="text-3xl font-bold text-status-warning tabular-nums">{urgentRenewals.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">30-90 days</p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Calendar className="w-4 h-4" />
-            Upcoming (&gt;90 days)
+        
+        <div className="rounded-xl border bg-card p-5 flex flex-col">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+            <Calendar className="w-4 h-4 text-primary" />
+            <span>Upcoming</span>
           </div>
-          <p className="text-2xl font-bold">{upcomingRenewals.length}</p>
+          <p className="text-3xl font-bold tabular-nums">{upcomingRenewals.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">&gt;90 days</p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <DollarSign className="w-4 h-4" />
-            At-Risk Value
+        
+        <div className="rounded-xl border bg-card p-5 flex flex-col">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+            <DollarSign className="w-4 h-4 text-primary" />
+            <span>At-Risk Value</span>
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(totalUpcomingValue)}</p>
+          <p className="text-3xl font-bold tabular-nums">{formatCurrency(totalUpcomingValue)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Next 90 days</p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <TrendingUp className="w-4 h-4" />
-            Avg. Usage Rate
+        
+        <div className="rounded-xl border bg-card p-5 flex flex-col">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span>Avg Usage</span>
           </div>
-          <p className="text-2xl font-bold">{avgUsage}%</p>
+          <p className="text-3xl font-bold tabular-nums">{avgUsage}%</p>
+          <p className="text-xs text-muted-foreground mt-1">Across contracts</p>
         </div>
       </div>
 
