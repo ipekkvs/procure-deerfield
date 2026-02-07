@@ -27,6 +27,7 @@ import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { preApprovedVendors } from "@/lib/riskScoring";
 import { NotificationsPopover } from "@/components/NotificationsPopover";
 import { HeaderSearchPopover } from "@/components/HeaderSearchPopover";
+import { ViewModeSwitcher } from "@/components/ViewModeSwitcher";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -274,6 +275,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
           
           <div className="flex items-center gap-3">
+            <ViewModeSwitcher />
             <RoleSwitcher onRoleChange={handleRoleChange} />
             <NotificationsPopover />
           </div>
