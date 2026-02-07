@@ -57,24 +57,28 @@ export function RequesterSummary({ userName, user }: RequesterSummaryProps) {
           value={activeRequests.length}
           subtitle="Currently in progress"
           icon={FileText}
+          href="/approvals?status=pending,needs_info"
         />
         <StatsCard
           title="Approved"
           value={approvedThisMonth.length}
           subtitle="This month"
           icon={CheckCircle2}
+          href="/approvals?status=approved"
         />
         <StatsCard
           title="Pending"
           value={pendingOthers.length}
           subtitle="Awaiting others"
           icon={Clock}
+          href="/approvals?status=pending"
         />
         <StatsCard
           title="Action Needed"
           value={needsAction.length}
           subtitle="Awaiting you"
           icon={AlertCircle}
+          href="/approvals?status=needs_info"
         />
       </div>
 
