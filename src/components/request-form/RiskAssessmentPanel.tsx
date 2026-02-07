@@ -39,6 +39,17 @@ export function RiskAssessmentPanel({ formData }: RiskAssessmentPanelProps) {
         useCaseChanged: formData.useCaseChanged,
         useCaseChangeDescription: formData.useCaseChangeDescription,
         vendorName: formData.vendorName,
+        // Technical integration fields
+        integrationType: formData.integrationType,
+        requiresDataStorage: formData.requiresDataStorage,
+        requiresNetworkAccess: formData.requiresNetworkAccess,
+        requiresCustomDevelopment: formData.requiresCustomDevelopment,
+        sensitiveDataAccess: formData.sensitiveDataAccess,
+        // Map integration type to legacy fields for compatibility
+        requiresApiIntegration: formData.integrationType === 'read_only_api' || 
+                                formData.integrationType === 'bidirectional_api',
+        requiresCoreSystemAccess: formData.integrationType === 'core_system',
+        requiresSsoSetup: formData.integrationType === 'sso_only',
       },
       department: formData.department,
       departmentBudgetRemaining: budget?.remaining || 100000,

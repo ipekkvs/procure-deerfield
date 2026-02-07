@@ -8,6 +8,15 @@ export type ContractTerm = '1_year' | '2_years' | '3_years' | '4_plus_years' | '
 
 export type RiskTier = 0 | 1 | 2 | 3 | 4;
 
+export type IntegrationType = 
+  | 'none' 
+  | 'sso_only' 
+  | 'read_only_api' 
+  | 'bidirectional_api' 
+  | 'core_system' 
+  | 'network_vpn'
+  | 'not_sure';
+
 export interface RiskFactors {
   // AI/ML Detection
   hasAiMlCapabilities: boolean;
@@ -36,6 +45,17 @@ export interface RiskFactors {
   requiresCoreSystemAccess: boolean;
   isEnterpriseWide: boolean;
   requiresSsoSetup: boolean;
+  
+  // Technical integration (new IT-specific)
+  integrationType: IntegrationType;
+  requiresDataStorage: boolean;
+  requiresNetworkAccess: boolean;
+  requiresCustomDevelopment: boolean;
+  sensitiveDataAccess: {
+    phi: boolean;
+    investmentData: boolean;
+    pii: boolean;
+  };
   
   // Vendor info
   vendorName: string;
@@ -66,6 +86,8 @@ export interface RiskAssessment {
   financeAutoApproved: boolean;
   complianceSkipped: boolean;
   complianceSkipReason: string;
+  itSkipped: boolean;
+  itSkipReason: string;
   
   // Detected flags
   aiMlDetected: boolean;
@@ -77,6 +99,13 @@ export interface RiskAssessment {
   // Trigger arrays (for display)
   cioTriggers: string[];
   complianceTriggers: string[];
+  itTriggers: string[];
+  
+  // Parallel review flag
+  requiresParallelItCompliance: boolean;
+  
+  // Security requirements by tier
+  securityRequirements: string[];
   
   // Routing explanation
   routingReasons: string[];
@@ -337,32 +366,119 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
   // ============= IT TRIGGERS =============
   const itTriggers: string[] = [];
   
+  // New vendor with data storage or processing
   if (factors.isNewVendor && factors.hasDataStorage) {
-    itTriggers.push('New vendor with data storage');
+    itTriggers.push('New vendor with data storage or processing');
   }
+  if (factors.isNewVendor && factors.requiresDataStorage) {
+    itTriggers.push('New vendor with cloud data storage');
+  }
+  
+  // API integration with existing systems
   if (factors.requiresApiIntegration) {
-    itTriggers.push('API integration required');
+    itTriggers.push('API integration with existing systems');
   }
-  if (factors.requiresCoreSystemAccess) {
-    itTriggers.push('System/network access needed');
+  if (factors.integrationType === 'read_only_api') {
+    itTriggers.push('Read-only API access required');
   }
+  if (factors.integrationType === 'bidirectional_api') {
+    itTriggers.push('Bi-directional API integration');
+  }
+  if (factors.integrationType === 'core_system') {
+    itTriggers.push('Core system integration');
+  }
+  
+  // SSO/authentication setup required (new vendor)
   if (factors.requiresSsoSetup && factors.isNewVendor) {
+    itTriggers.push('SSO/authentication setup required (new vendor)');
+  }
+  if (factors.integrationType === 'sso_only' && factors.isNewVendor) {
     itTriggers.push('SSO setup for new vendor');
   }
-  if (factors.accessesPhi || factors.accessesInvestmentData || factors.accessesProprietaryData) {
-    itTriggers.push('Sensitive data access');
+  
+  // System or network access needed
+  if (factors.requiresCoreSystemAccess) {
+    itTriggers.push('System or network access needed');
   }
+  
+  // VPN or internal network access
+  if (factors.requiresNetworkAccess || factors.integrationType === 'network_vpn') {
+    itTriggers.push('VPN or internal network access required');
+  }
+  
+  // Sensitive data access (PHI, investment data, PII)
+  if (factors.accessesPhi || factors.sensitiveDataAccess?.phi) {
+    itTriggers.push('PHI access - security controls required');
+  }
+  if (factors.accessesInvestmentData || factors.sensitiveDataAccess?.investmentData) {
+    itTriggers.push('Investment data access - security controls required');
+  }
+  if (factors.sensitiveDataAccess?.pii) {
+    itTriggers.push('PII access - security controls required');
+  }
+  
+  // Custom development or significant configuration
+  if (factors.requiresCustomDevelopment) {
+    itTriggers.push('Custom development or significant configuration');
+  }
+  
+  // Use case changed on pre-approved vendor
   if (useCaseChanged) {
     itTriggers.push('Use case changed - requires IT re-review');
   }
   
-  // Skip IT for renewals with no changes from pre-approved vendors
+  // Not sure - defaults to IT review
+  if (factors.integrationType === 'not_sure') {
+    itTriggers.push('Integration type unclear - IT assessment needed');
+  }
+  
+  // Skip IT for renewals with no changes from pre-approved vendors AND no IT triggers
   const skipIt = 
     requestType === 'renewal' && 
     !useCaseChanged && 
-    isPreApproved;
+    isPreApproved &&
+    itTriggers.length === 0;
   
+  const itSkipReason = skipIt 
+    ? `Pre-approved vendor (${vendorName}) renewal with no technical changes`
+    : '';
+  
+  // Require IT if there are triggers and it's not skipped
   const requiresIt = itTriggers.length > 0 && !skipIt;
+  
+  // Parallel review when both IT and Compliance needed (Tier 3-4)
+  const requiresParallelItCompliance = requiresIt && requiresCompliance;
+  
+  // ============= SECURITY REQUIREMENTS BY TIER =============
+  const getSecurityRequirements = (t: RiskTier): string[] => {
+    switch (t) {
+      case 2:
+        return [
+          'Basic security questionnaire',
+          'SOC 2 certification (or equivalent)',
+          'Review: 2-3 days',
+        ];
+      case 3:
+        return [
+          'Full security assessment',
+          'SOC 2 Type II report',
+          'Data encryption standards',
+          'Incident response plan',
+          'Review: 5-7 days',
+        ];
+      case 4:
+        return [
+          'Everything in Tier 3 +',
+          'Third-party security audit',
+          'Penetration test results',
+          'Reference checks from similar firms',
+          'Pilot/POC required before full deployment',
+          'Review: 1-2 weeks',
+        ];
+      default:
+        return [];
+    }
+  };
   
   // ============= LEGAL TRIGGERS (for Tier 4) =============
   const requiresLegal = requiresCio; // Legal added when CIO is involved
@@ -394,7 +510,7 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     hasInvestmentDataRisk ||
     hasHealthcareRisk ||
     (factors.isNewVendor && (factors.accessesPhi || factors.accessesInvestmentData)) ||
-    (requiresIt && requiresCompliance)
+    requiresParallelItCompliance
   ) {
     tier = 3;
     tierLabel = 'High Risk';
@@ -403,7 +519,8 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
   else if (
     (factors.isNewVendor && factors.hasDataStorage) ||
     (amount >= 10000 && amount < 50000) ||
-    factors.requiresApiIntegration
+    factors.requiresApiIntegration ||
+    (factors.integrationType && factors.integrationType !== 'none')
   ) {
     tier = 2;
     tierLabel = 'Medium Risk';
@@ -414,6 +531,9 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     tierLabel = 'Low Risk';
   }
   
+  // Get security requirements for the tier
+  const securityRequirements = getSecurityRequirements(tier);
+  
   // ============= BUILD APPROVAL PATH =============
   const approvalPath: string[] = ['Manager'];
   const routingReasons: string[] = [];
@@ -422,9 +542,9 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     approvalPath.push('Auto-Approved');
     routingReasons.push('Pre-approved vendor renewal with no changes under $10K');
   } else {
-    if (requiresIt && requiresCompliance && requiresLegal) {
+    if (requiresParallelItCompliance && requiresLegal) {
       approvalPath.push('IT + Compliance + Legal (parallel)');
-    } else if (requiresIt && requiresCompliance) {
+    } else if (requiresParallelItCompliance) {
       approvalPath.push('IT + Compliance (parallel)');
     } else if (requiresIt) {
       approvalPath.push('IT');
@@ -458,12 +578,16 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
   
   if (hasAnyAiMl) riskScore += 25;
   if (hasAnyPortfolioAccess) riskScore += 25;
-  if (factors.accessesPhi) riskScore += 30;
-  if (hasInvestmentDataRisk) riskScore += 20;
+  if (factors.accessesPhi || factors.sensitiveDataAccess?.phi) riskScore += 30;
+  if (hasInvestmentDataRisk || factors.sensitiveDataAccess?.investmentData) riskScore += 20;
+  if (factors.sensitiveDataAccess?.pii) riskScore += 10;
   if (factors.isNewVendor) riskScore += 10;
-  if (factors.hasDataStorage) riskScore += 5;
+  if (factors.hasDataStorage || factors.requiresDataStorage) riskScore += 5;
   if (factors.requiresApiIntegration) riskScore += 10;
-  if (factors.requiresCoreSystemAccess) riskScore += 15;
+  if (factors.requiresCoreSystemAccess || factors.integrationType === 'core_system') riskScore += 15;
+  if (factors.integrationType === 'bidirectional_api') riskScore += 10;
+  if (factors.requiresNetworkAccess || factors.integrationType === 'network_vpn') riskScore += 7;
+  if (factors.requiresCustomDevelopment) riskScore += 5;
   if (isMultiYear) riskScore += 10;
   if (isOverBudget) riskScore += 15;
   if (useCaseChanged) riskScore += 10;
@@ -488,8 +612,13 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     overBudgetAmount: isOverBudget ? amount - departmentBudgetRemaining : 0,
     cioTriggers,
     complianceTriggers,
+    itTriggers,
     complianceSkipped: skipCompliance,
     complianceSkipReason,
+    itSkipped: skipIt,
+    itSkipReason,
+    requiresParallelItCompliance,
+    securityRequirements,
     routingReasons,
     approvalPath,
   };

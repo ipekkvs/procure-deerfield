@@ -7,12 +7,13 @@ import {
   departmentBudgets,
   getDepartmentBudget
 } from "@/lib/mockData";
-import { CheckCircle2, DollarSign, AlertCircle, Paperclip, Bot, Building2 } from "lucide-react";
+import { CheckCircle2, DollarSign, AlertCircle, Paperclip, Bot, Building2, Server } from "lucide-react";
 import { ApprovalWorkflowDiagram, WorkflowNode, WorkflowStep, ParallelSteps } from "@/components/ApprovalWorkflowDiagram";
 import { RiskAssessmentPanel } from "./RiskAssessmentPanel";
 import { FinanceApprovalNotice } from "./FinanceApprovalNotice";
 import { CioApprovalNotice } from "./CioApprovalNotice";
 import { ComplianceApprovalNotice } from "./ComplianceApprovalNotice";
+import { ItApprovalNotice } from "./ItApprovalNotice";
 import { calculateRiskAssessment, RiskAssessment, isPreApprovedVendor } from "@/lib/riskScoring";
 function buildWorkflowNodes(
   requestType: 'new_purchase' | 'renewal',
@@ -43,44 +44,59 @@ function buildWorkflowNodes(
     approver: { name: 'Department Leader', role: 'Approver' },
   } as WorkflowStep);
 
-  // Step 4: Compliance & IT Review (Parallel) - Skip for renewals
-  if (isRenewal) {
+  // Step 4: Compliance & IT Review (Parallel) - Conditional based on assessment
+  const complianceStatus = assessment.complianceSkipped ? 'skipped' : (assessment.requiresCompliance ? 'pending' : 'skipped');
+  const itStatus = assessment.itSkipped ? 'skipped' : (assessment.requiresIt ? 'pending' : 'skipped');
+  
+  // Show parallel reviews if either is required
+  if (assessment.requiresIt || assessment.requiresCompliance) {
     nodes.push({
       steps: [
         {
           id: 'compliance',
           label: 'Compliance Review',
-          status: 'skipped',
-          conditionLabel: 'Skipped - Not required for renewals',
+          description: assessment.requiresCompliance ? 'Data privacy, security & regulatory' : undefined,
+          status: complianceStatus,
+          conditionLabel: assessment.complianceSkipped 
+            ? assessment.complianceSkipReason || 'Skipped - Not required'
+            : undefined,
+          approver: assessment.requiresCompliance 
+            ? { name: 'Compliance Team', role: 'Reviewer' } 
+            : undefined,
         } as WorkflowStep,
         {
           id: 'it_review',
           label: 'IT Review',
-          status: 'skipped',
-          conditionLabel: 'Skipped - Not required for renewals',
+          description: assessment.requiresIt ? 'Technical compatibility & security' : undefined,
+          status: itStatus,
+          conditionLabel: assessment.itSkipped 
+            ? assessment.itSkipReason || 'Skipped - Not required'
+            : undefined,
+          approver: assessment.requiresIt 
+            ? { name: 'IT Team', role: 'Reviewer' } 
+            : undefined,
         } as WorkflowStep,
       ],
-      label: 'Parallel Reviews',
+      label: assessment.requiresParallelItCompliance ? 'Reviews in Parallel' : 'Technical Reviews',
     } as ParallelSteps);
-  } else {
+  } else if (isRenewal) {
+    // For renewals with no reviews needed, show skipped
     nodes.push({
       steps: [
         {
           id: 'compliance',
           label: 'Compliance Review',
-          description: 'Data privacy, security & regulatory',
-          status: 'pending',
-          approver: { name: 'Compliance Team', role: 'Reviewer' },
+          status: 'skipped',
+          conditionLabel: 'Skipped - Pre-approved vendor renewal',
         } as WorkflowStep,
         {
           id: 'it_review',
           label: 'IT Review',
-          description: 'Technical compatibility & security',
-          status: 'pending',
-          approver: { name: 'IT Team', role: 'Reviewer' },
+          status: 'skipped',
+          conditionLabel: 'Skipped - No technical changes',
         } as WorkflowStep,
       ],
-      label: 'Parallel Reviews',
+      label: 'Technical Reviews',
     } as ParallelSteps);
   }
 
@@ -171,6 +187,17 @@ export function ReviewStep({ formData }: StepProps) {
         useCaseChanged: formData.useCaseChanged,
         useCaseChangeDescription: formData.useCaseChangeDescription,
         vendorName: formData.vendorName,
+        // Technical integration fields
+        integrationType: formData.integrationType,
+        requiresDataStorage: formData.requiresDataStorage,
+        requiresNetworkAccess: formData.requiresNetworkAccess,
+        requiresCustomDevelopment: formData.requiresCustomDevelopment,
+        sensitiveDataAccess: formData.sensitiveDataAccess,
+        // Map integration type to legacy fields for compatibility
+        requiresApiIntegration: formData.integrationType === 'read_only_api' || 
+                                formData.integrationType === 'bidirectional_api',
+        requiresCoreSystemAccess: formData.integrationType === 'core_system',
+        requiresSsoSetup: formData.integrationType === 'sso_only',
       },
       department: formData.department,
       departmentBudgetRemaining: budget?.remaining || 100000,
@@ -202,6 +229,18 @@ export function ReviewStep({ formData }: StepProps) {
           <CioApprovalNotice assessment={assessment} />
         </div>
       )}
+
+      {/* IT Security Review Notice */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">IT Security Review Status</h2>
+        <ItApprovalNotice 
+          assessment={assessment}
+          vendorName={formData.vendorName}
+          isPreApprovedVendor={isPreApprovedVendor(formData.vendorName)}
+          useCaseChanged={formData.useCaseChanged}
+          integrationType={formData.integrationType}
+        />
+      </div>
 
       {/* Compliance Approval Notice */}
       <div>
