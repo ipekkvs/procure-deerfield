@@ -8,6 +8,8 @@ export type UserRole =
   | 'it' 
   | 'director_operations' 
   | 'finance' 
+  | 'legal'
+  | 'cio'
   | 'admin';
 
 export interface User {
@@ -156,6 +158,7 @@ export interface Vendor {
   website?: string;
   contactEmail?: string;
   contactPhone?: string;
+  isPreApproved: boolean; // Pre-approved vendors get streamlined review
 }
 
 // ============= RENEWAL TYPES =============
@@ -744,6 +747,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://salesforce.com',
     contactEmail: 'enterprise@salesforce.com',
+    isPreApproved: true,
   },
   {
     id: 'VEN-002',
@@ -758,6 +762,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://aws.amazon.com',
     contactEmail: 'aws-support@amazon.com',
+    isPreApproved: true,
   },
   {
     id: 'VEN-003',
@@ -772,6 +777,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://slack.com',
     contactEmail: 'enterprise@slack.com',
+    isPreApproved: true,
   },
   {
     id: 'VEN-004',
@@ -786,6 +792,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://figma.com',
     contactEmail: 'sales@figma.com',
+    isPreApproved: false,
   },
   {
     id: 'VEN-005',
@@ -800,6 +807,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://zoom.us',
     contactEmail: 'sales@zoom.us',
+    isPreApproved: true,
   },
   {
     id: 'VEN-006',
@@ -814,6 +822,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://hubspot.com',
     contactEmail: 'enterprise@hubspot.com',
+    isPreApproved: false,
   },
   {
     id: 'VEN-007',
@@ -828,6 +837,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://okta.com',
     contactEmail: 'sales@okta.com',
+    isPreApproved: false,
   },
   {
     id: 'VEN-008',
@@ -842,6 +852,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://notion.so',
     contactEmail: 'team@notion.so',
+    isPreApproved: false,
   },
   {
     id: 'VEN-009',
@@ -856,6 +867,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://workday.com',
     contactEmail: 'sales@workday.com',
+    isPreApproved: false,
   },
   {
     id: 'VEN-010',
@@ -870,6 +882,7 @@ export const vendors: Vendor[] = [
     status: 'active',
     website: 'https://intercom.com',
     contactEmail: 'sales@intercom.io',
+    isPreApproved: false,
   },
 ];
 
