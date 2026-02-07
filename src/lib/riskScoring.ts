@@ -72,6 +72,9 @@ export interface RiskAssessment {
   isOverBudget: boolean;
   overBudgetAmount: number;
   
+  // CIO-specific triggers (for display)
+  cioTriggers: string[];
+  
   // Routing explanation
   routingReasons: string[];
   approvalPath: string[];
@@ -462,6 +465,7 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     isPreApprovedVendor: isPreApproved,
     isOverBudget,
     overBudgetAmount: isOverBudget ? amount - departmentBudgetRemaining : 0,
+    cioTriggers,
     routingReasons,
     approvalPath,
   };

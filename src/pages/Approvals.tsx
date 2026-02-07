@@ -36,11 +36,16 @@ import {
   XCircle,
   CheckCircle2,
   Eye,
-  Plus
+  Plus,
+  ShieldAlert,
+  Bot,
+  HeartPulse,
+  TrendingUp,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'finance-auto' | 'overbudget' | 'multiyear' | 'contracting';
+type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'finance-auto' | 'overbudget' | 'multiyear' | 'contracting' | 'cio';
 
 // Mock over-budget requests for demonstration
 const overBudgetRequests = [
@@ -160,6 +165,92 @@ const multiYearRequests: Array<{
   },
 ];
 
+// Mock CIO pending requests (grouped by trigger type)
+type CioTriggerType = 'large_purchase' | 'ai_ml' | 'portfolio' | 'sensitive_data' | 'core_systems';
+
+interface CioRequest {
+  id: string;
+  title: string;
+  requesterName: string;
+  department: 'investment' | '3dc' | 'deerfield_intelligence' | 'business_operations' | 'external_operations' | 'deerfield_foundation';
+  amount: number;
+  triggerType: CioTriggerType;
+  triggerReason: string;
+  daysInQueue: number;
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+}
+
+const cioRequests: CioRequest[] = [
+  {
+    id: 'CIO-001',
+    title: 'Enterprise Data Platform',
+    requesterName: 'Alex Johnson',
+    department: 'deerfield_intelligence',
+    amount: 75000,
+    triggerType: 'large_purchase',
+    triggerReason: 'Amount exceeds $50,000',
+    daysInQueue: 2,
+    urgency: 'high',
+  },
+  {
+    id: 'CIO-002',
+    title: 'OpenAI API Integration',
+    requesterName: 'Mike Wilson',
+    department: 'investment',
+    amount: 35000,
+    triggerType: 'ai_ml',
+    triggerReason: 'AI/ML tool detected - platform consistency review',
+    daysInQueue: 1,
+    urgency: 'critical',
+  },
+  {
+    id: 'CIO-003',
+    title: 'Portfolio Analytics Dashboard',
+    requesterName: 'Sarah Chen',
+    department: 'investment',
+    amount: 28000,
+    triggerType: 'portfolio',
+    triggerReason: 'Portfolio company access - reputational risk review',
+    daysInQueue: 3,
+    urgency: 'medium',
+  },
+  {
+    id: 'CIO-004',
+    title: 'Patient Data Management System',
+    requesterName: 'Emily Brown',
+    department: '3dc',
+    amount: 42000,
+    triggerType: 'sensitive_data',
+    triggerReason: 'PHI/Patient data access',
+    daysInQueue: 1,
+    urgency: 'high',
+  },
+  {
+    id: 'CIO-005',
+    title: 'Core ERP Integration',
+    requesterName: 'David Lee',
+    department: 'business_operations',
+    amount: 55000,
+    triggerType: 'core_systems',
+    triggerReason: 'Core system integration',
+    daysInQueue: 4,
+    urgency: 'medium',
+  },
+];
+
+const cioApprovedThisWeek = [
+  { id: 'CA-001', title: 'ML Research Platform', amount: 45000, approvedAt: '2 days ago' },
+  { id: 'CA-002', title: 'Compliance Monitoring Tool', amount: 62000, approvedAt: '4 days ago' },
+];
+
+const cioTriggerLabels: Record<CioTriggerType, { label: string; icon: React.ReactNode; color: string }> = {
+  large_purchase: { label: 'Large Purchases (>$50K)', icon: <DollarSign className="w-4 h-4" />, color: 'text-primary' },
+  ai_ml: { label: 'AI/ML Tools & APIs', icon: <Bot className="w-4 h-4" />, color: 'text-purple-600' },
+  portfolio: { label: 'Portfolio Company Integrations', icon: <Building2 className="w-4 h-4" />, color: 'text-blue-600' },
+  sensitive_data: { label: 'Sensitive Data Access', icon: <HeartPulse className="w-4 h-4" />, color: 'text-status-error' },
+  core_systems: { label: 'Core Systems & Enterprise', icon: <Settings className="w-4 h-4" />, color: 'text-orange-600' },
+};
+
 const Approvals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -204,6 +295,8 @@ const Approvals = () => {
         return []; // Handled separately with overBudgetRequests
       case 'multiyear':
         return []; // Handled separately with multiYearRequests
+      case 'cio':
+        return []; // Handled separately with cioRequests
       case 'contracting':
         return pendingRequests.filter(r => 
           r.currentStep === 'contracting'
@@ -259,6 +352,7 @@ const Approvals = () => {
 
   const viewTabs: { value: ApprovalView; label: string; icon: React.ElementType; count: number; highlight?: boolean; badge?: string }[] = [
     { value: 'all', label: 'All', icon: Filter, count: pendingRequests.length },
+    { value: 'cio', label: 'CIO Review', icon: ShieldAlert, count: cioRequests.length, highlight: cioRequests.length > 0 },
     { value: 'department', label: 'Dept. Approval', icon: Building2, count: getRequestsForView('department').length },
     { value: 'compliance', label: 'Compliance', icon: Shield, count: getRequestsForView('compliance').length },
     { value: 'it', label: 'IT Review', icon: Monitor, count: getRequestsForView('it').length },
@@ -359,8 +453,110 @@ const Approvals = () => {
         </TabsList>
 
         <div className="mt-4">
-          {/* Over-Budget Exceptions View */}
-          {currentView === 'overbudget' ? (
+          {/* CIO Dashboard View */}
+          {currentView === 'cio' ? (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="p-4 rounded-lg bg-status-error-bg border border-status-error/30 flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-status-error mt-0.5" />
+                <div>
+                  <p className="font-semibold text-status-error">🚨 CIO Review Required</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Strategic purchases requiring executive approval for platform consistency, security, and enterprise impact.
+                  </p>
+                </div>
+              </div>
+
+              {/* Grouped by trigger type */}
+              {Object.entries(cioTriggerLabels).map(([type, { label, icon, color }]) => {
+                const requestsOfType = cioRequests.filter(r => r.triggerType === type);
+                if (requestsOfType.length === 0) return null;
+                
+                return (
+                  <div key={type} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className={color}>{icon}</span>
+                      <h3 className="font-semibold">{label}</h3>
+                      <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{requestsOfType.length}</span>
+                    </div>
+                    
+                    {requestsOfType.map((request) => (
+                      <div key={request.id} className="rounded-xl border bg-card overflow-hidden">
+                        <div className="p-4 flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold">{request.title}</h4>
+                              <span className={cn(
+                                "px-2 py-0.5 text-xs font-medium rounded-full",
+                                request.urgency === 'critical' ? "bg-status-error/20 text-status-error" :
+                                request.urgency === 'high' ? "bg-status-warning/20 text-status-warning" :
+                                "bg-muted text-muted-foreground"
+                              )}>
+                                {request.urgency}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {request.requesterName} • {getDepartmentLabel(request.department)} • {request.daysInQueue} day{request.daysInQueue !== 1 ? 's' : ''} waiting
+                            </p>
+                            <div className="mt-2 px-2 py-1 rounded bg-muted/50 text-xs text-muted-foreground inline-flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              {request.triggerReason}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">{formatCurrency(request.amount)}</p>
+                            <Button size="sm" className="mt-2">Review</Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+
+              {/* Approved This Week */}
+              {cioApprovedThisWeek.length > 0 && (
+                <div className="space-y-3 pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-status-success" />
+                    <h3 className="font-semibold text-status-success">✅ Approved This Week</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {cioApprovedThisWeek.map((req) => (
+                      <div key={req.id} className="rounded-lg border border-status-success/30 bg-status-success-bg p-3 flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-sm">{req.title}</p>
+                          <p className="text-xs text-muted-foreground">{req.approvedAt}</p>
+                        </div>
+                        <p className="font-semibold text-status-success">{formatCurrency(req.amount)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All Purchases View-Only */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="font-semibold">📊 All Purchases (View Only)</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {pendingRequests.length} total in pipeline
+                  </p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  View all purchases even if CIO approval isn't required. Use "Jump In" to add yourself to any request if concerned.
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentView('all')}>
+                    View All Requests
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : currentView === 'overbudget' ? (
             <div className="space-y-6">
               <div className="p-4 rounded-lg bg-status-error-bg border border-status-error/30 flex items-start gap-3">
                 <TrendingDown className="w-5 h-5 text-status-error mt-0.5" />
@@ -799,6 +995,28 @@ const Approvals = () => {
 
               {/* Sidebar */}
               <div className="space-y-6">
+                {/* CIO Alert */}
+                {cioRequests.length > 0 && (
+                  <div 
+                    className="rounded-xl border border-status-error/30 bg-status-error-bg p-4 cursor-pointer hover:bg-status-error/10 transition-colors"
+                    onClick={() => setCurrentView('cio')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-status-error/20">
+                        <ShieldAlert className="w-5 h-5 text-status-error" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-status-error">
+                          🚨 {cioRequests.length} CIO Review{cioRequests.length !== 1 ? 's' : ''} Required
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Strategic purchases: {formatCurrency(cioRequests.reduce((sum, r) => sum + r.amount, 0))}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Over-Budget Alert */}
                 {overBudgetRequests.length > 0 && (
                   <div 

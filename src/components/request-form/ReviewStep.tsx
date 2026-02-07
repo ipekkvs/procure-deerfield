@@ -11,10 +11,12 @@ import { CheckCircle2, DollarSign, AlertCircle, Paperclip, Bot, Building2 } from
 import { ApprovalWorkflowDiagram, WorkflowNode, WorkflowStep, ParallelSteps } from "@/components/ApprovalWorkflowDiagram";
 import { RiskAssessmentPanel } from "./RiskAssessmentPanel";
 import { FinanceApprovalNotice } from "./FinanceApprovalNotice";
-import { calculateRiskAssessment } from "@/lib/riskScoring";
+import { CioApprovalNotice } from "./CioApprovalNotice";
+import { calculateRiskAssessment, RiskAssessment } from "@/lib/riskScoring";
 function buildWorkflowNodes(
   requestType: 'new_purchase' | 'renewal',
-  budgetedAmount: number
+  budgetedAmount: number,
+  assessment: RiskAssessment
 ): WorkflowNode[] {
   const requiresNegotiation = budgetedAmount > 25000;
   const isRenewal = requestType === 'renewal';
@@ -120,7 +122,18 @@ function buildWorkflowNodes(
     label: 'Final Approvals',
   } as ParallelSteps);
 
-  // Step 7: Contracting
+  // Step 7: CIO Approval (conditional on triggers)
+  if (assessment.requiresCio) {
+    nodes.push({
+      id: 'cio_approval',
+      label: 'CIO Approval',
+      description: 'Strategic & platform review',
+      status: 'pending',
+      approver: { name: 'CIO', role: 'Executive Approver' },
+    } as WorkflowStep);
+  }
+
+  // Step 8: Contracting
   nodes.push({
     id: 'contracting',
     label: 'Contracting',
@@ -134,16 +147,12 @@ function buildWorkflowNodes(
 
 export function ReviewStep({ formData }: StepProps) {
   const requiresNegotiation = (formData.budgetedAmount || 0) > 25000;
-  const workflowNodes = buildWorkflowNodes(
-    formData.requestType,
-    formData.budgetedAmount || 0
-  );
 
   // Check for AI/ML and portfolio flags
   const hasAiMlFlags = formData.hasAiMlCapabilities || formData.hasLlmApiAccess || formData.usesMlForAnalysis;
   const hasPortfolioFlags = formData.hasPortfolioCompanyAccess || formData.integratesWithPortfolioNetworks || formData.usedByPortfolioStaff;
 
-  // Calculate risk assessment for finance notice
+  // Calculate risk assessment for finance and CIO notices
   const assessment = useMemo(() => {
     const budget = getDepartmentBudget(formData.department || 'investment');
     
@@ -169,6 +178,13 @@ export function ReviewStep({ formData }: StepProps) {
     });
   }, [formData]);
 
+  // Build workflow nodes with assessment
+  const workflowNodes = buildWorkflowNodes(
+    formData.requestType,
+    formData.budgetedAmount || 0,
+    assessment
+  );
+
   const departmentBudget = formData.department 
     ? getDepartmentBudget(formData.department) 
     : null;
@@ -178,6 +194,14 @@ export function ReviewStep({ formData }: StepProps) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* CIO Approval Notice (if required) */}
+      {assessment.requiresCio && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Executive Approval Required</h2>
+          <CioApprovalNotice assessment={assessment} />
+        </div>
+      )}
+
       {/* Finance Approval Notice */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Finance Approval Status</h2>
