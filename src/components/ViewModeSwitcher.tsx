@@ -64,34 +64,34 @@ export function ViewModeSwitcher({ collapsed = false }: ViewModeSwitcherProps) {
   }
 
   return (
-    <div className="flex items-center gap-1 p-1 rounded-lg bg-sidebar-accent/50 border border-sidebar-border">
+    <div className="flex flex-col gap-1 p-1 rounded-lg bg-sidebar-accent/50 border border-sidebar-border">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setViewMode('individual')}
         className={cn(
-          "gap-2 h-7 px-2.5 text-xs font-medium transition-all flex-1",
+          "gap-2 h-7 px-2 text-xs font-medium transition-all justify-start w-full",
           viewMode === 'individual' 
             ? "bg-background shadow-sm text-foreground" 
             : "text-sidebar-foreground hover:text-foreground hover:bg-transparent"
         )}
       >
-        <User className="w-3.5 h-3.5" />
-        {individualLabel}
+        <User className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="truncate">{individualLabel}</span>
       </Button>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setViewMode('role')}
         className={cn(
-          "gap-2 h-7 px-2.5 text-xs font-medium transition-all flex-1",
+          "gap-2 h-7 px-2 text-xs font-medium transition-all justify-start w-full",
           viewMode === 'role' 
             ? "bg-background shadow-sm text-foreground" 
             : "text-sidebar-foreground hover:text-foreground hover:bg-transparent"
         )}
       >
-        <Briefcase className="w-3.5 h-3.5" />
-        {roleLabel}
+        <Briefcase className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="truncate">{roleLabel}</span>
       </Button>
     </div>
   );
