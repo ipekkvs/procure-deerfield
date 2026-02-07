@@ -131,15 +131,25 @@ export function AppLayout({ children }: AppLayoutProps) {
   const notifications = renewals.filter(r => r.reviewStatus !== 'completed').length + 
     requests.filter(r => r.status === 'needs_info').length;
 
-  const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard, badge: dashboardAlertCount > 0 },
-    { name: "New Request", href: "/new-request", icon: Plus },
-    { name: "Approvals", href: "/approvals", icon: ClipboardCheck, badgeCount: approvalCount },
-    { name: "Renewals", href: "/renewals", icon: RefreshCw },
-    { name: "Vendors", href: "/vendors", icon: Building2 },
-    { name: "Reports", href: "/reports", icon: BarChart3 },
-    { name: "Settings", href: "/settings", icon: Settings },
-  ];
+  // Build navigation based on role
+  const navigation = useMemo(() => {
+    const baseNav = [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard, badge: dashboardAlertCount > 0 },
+      { name: "New Request", href: "/new-request", icon: Plus },
+      { name: "Approvals", href: "/approvals", icon: ClipboardCheck, badgeCount: approvalCount },
+      { name: "Renewals", href: "/renewals", icon: RefreshCw },
+      { name: "Vendors", href: "/vendors", icon: Building2 },
+    ];
+    
+    // Only show Reports for non-requesters
+    if (currentUser.role !== 'requester') {
+      baseNav.push({ name: "Reports", href: "/reports", icon: BarChart3 });
+    }
+    
+    baseNav.push({ name: "Settings", href: "/settings", icon: Settings });
+    
+    return baseNav;
+  }, [currentUser.role, dashboardAlertCount, approvalCount]);
 
   return (
     <div className="min-h-screen flex w-full bg-background">

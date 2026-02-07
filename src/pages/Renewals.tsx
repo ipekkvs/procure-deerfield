@@ -6,7 +6,8 @@ import {
   formatCurrency, 
   formatDate,
   Renewal,
-  getCurrentUser 
+  getCurrentUser,
+  departments 
 } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,13 +33,26 @@ import {
   Trash2,
   Bell,
   CalendarDays,
-  List
+  List,
+  Building2,
+  Download,
+  Filter,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/search-input";
 import { NoSearchResults } from "@/components/search/NoSearchResults";
 import { searchItems } from "@/hooks/useRoleBasedSearch";
+import { RenewalFilters, filterRenewalsByAmount } from "@/components/renewals/RenewalFilters";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Renewals = () => {
   const navigate = useNavigate();
@@ -50,13 +64,156 @@ const Renewals = () => {
   const [recommendation, setRecommendation] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [amountFilter, setAmountFilter] = useState<string>("all");
+  const [showStrategicOnly, setShowStrategicOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<"mine" | "team">("mine");
 
-  // Role-based placeholder
-  const isEnterpriseRole = ['finance', 'compliance', 'it', 'cio', 'director_operations'].includes(currentUser.role);
-  const searchPlaceholder = isEnterpriseRole ? "Search all renewals..." : "Search my renewals...";
+  // Role-based configuration
+  const roleConfig = useMemo(() => {
+    switch (currentUser.role) {
+      case 'requester':
+        return {
+          title: 'My Renewals',
+          subtitle: 'Contracts you own or are responsible for',
+          showDepartmentFilter: false,
+          showAmountFilter: false,
+          showExport: false,
+          showTabs: false,
+          showStrategicToggle: false,
+        };
+      case 'department_leader':
+        return {
+          title: `My Department Renewals - ${departments.find(d => d.value === currentUser.department)?.label || ''}`,
+          subtitle: 'Your renewals and team renewals',
+          showDepartmentFilter: false,
+          showAmountFilter: true,
+          showExport: false,
+          showTabs: true,
+          showStrategicToggle: false,
+        };
+      case 'finance':
+        return {
+          title: 'All Company Renewals',
+          subtitle: 'Enterprise-wide renewal management',
+          showDepartmentFilter: true,
+          showAmountFilter: true,
+          showExport: true,
+          showTabs: false,
+          showStrategicToggle: false,
+        };
+      case 'compliance':
+        return {
+          title: 'Compliance-Relevant Renewals',
+          subtitle: 'Renewals with regulatory implications',
+          showDepartmentFilter: false,
+          showAmountFilter: true,
+          showExport: false,
+          showTabs: false,
+          showStrategicToggle: false,
+        };
+      case 'it':
+        return {
+          title: 'IT-Relevant Renewals',
+          subtitle: 'Renewals with technical/security implications',
+          showDepartmentFilter: false,
+          showAmountFilter: true,
+          showExport: false,
+          showTabs: false,
+          showStrategicToggle: false,
+        };
+      case 'cio':
+        return {
+          title: 'All Company Renewals',
+          subtitle: 'Strategic renewal management',
+          showDepartmentFilter: true,
+          showAmountFilter: true,
+          showExport: true,
+          showTabs: false,
+          showStrategicToggle: true,
+        };
+      case 'director_operations':
+        return {
+          title: 'All Company Renewals',
+          subtitle: 'Operational renewal pipeline',
+          showDepartmentFilter: true,
+          showAmountFilter: true,
+          showExport: true,
+          showTabs: false,
+          showStrategicToggle: false,
+        };
+      default:
+        return {
+          title: 'Renewals',
+          subtitle: 'Contract renewals',
+          showDepartmentFilter: false,
+          showAmountFilter: false,
+          showExport: false,
+          showTabs: false,
+          showStrategicToggle: false,
+        };
+    }
+  }, [currentUser.role, currentUser.department]);
+
+  // Role-based filtering
+  const roleFilteredRenewals = useMemo(() => {
+    let filtered = [...renewals];
+    
+    switch (currentUser.role) {
+      case 'requester':
+        // Only renewals they own
+        filtered = filtered.filter(r => r.ownerId === currentUser.id);
+        break;
+      case 'department_leader':
+        // Their renewals + department renewals
+        if (activeTab === 'mine') {
+          filtered = filtered.filter(r => r.ownerId === currentUser.id);
+        } else {
+          filtered = filtered.filter(r => r.department === currentUser.department);
+        }
+        break;
+      case 'compliance':
+        // Only compliance-relevant
+        filtered = filtered.filter(r => 
+          r.requiresCompliance || r.hasPhi || r.hasInvestmentData
+        );
+        break;
+      case 'it':
+        // Only IT-relevant
+        filtered = filtered.filter(r => 
+          r.requiresIt || r.hasIntegration
+        );
+        break;
+      case 'cio':
+        // All, but can filter to strategic only
+        if (showStrategicOnly) {
+          filtered = filtered.filter(r => 
+            r.amount > 50000 || r.hasIntegration || r.hasInvestmentData
+          );
+        }
+        break;
+      // Finance and Director see all
+      default:
+        break;
+    }
+    
+    return filtered;
+  }, [currentUser, activeTab, showStrategicOnly]);
+
+  // Apply department filter
+  const deptFilteredRenewals = useMemo(() => {
+    if (departmentFilter === 'all') return roleFilteredRenewals;
+    return roleFilteredRenewals.filter(r => r.department === departmentFilter);
+  }, [roleFilteredRenewals, departmentFilter]);
+
+  // Apply amount filter
+  const amountFilteredRenewals = useMemo(() => 
+    filterRenewalsByAmount(deptFilteredRenewals, amountFilter),
+    [deptFilteredRenewals, amountFilter]
+  );
 
   // Sort renewals by days until expiration
-  const sortedRenewals = [...renewals].sort((a, b) => 
+  const sortedRenewals = [...amountFilteredRenewals].sort((a, b) => 
     a.daysUntilExpiration - b.daysUntilExpiration
   );
 
@@ -66,7 +223,6 @@ const Renewals = () => {
     [sortedRenewals, searchQuery]
   );
 
-  // Use searched renewals for filtering
   const filteredRenewals = searchedRenewals;
 
   // Group by urgency
@@ -89,9 +245,9 @@ const Renewals = () => {
   // Stats
   const totalUpcomingValue = [...criticalRenewals, ...urgentRenewals]
     .reduce((sum, r) => sum + r.amount, 0);
-  const avgUsage = Math.round(
-    renewals.reduce((sum, r) => sum + r.usageRate, 0) / renewals.length
-  );
+  const avgUsage = filteredRenewals.length > 0 
+    ? Math.round(filteredRenewals.reduce((sum, r) => sum + r.usageRate, 0) / filteredRenewals.length)
+    : 0;
 
   const handleOpenReview = (renewal: Renewal) => {
     setSelectedRenewal(renewal);
@@ -105,7 +261,6 @@ const Renewals = () => {
       title: "Starting Renewal Process",
       description: `Pre-filling renewal request for ${renewal.vendorName}...`,
     });
-    // Navigate to new request with pre-filled data
     navigate("/new-request", { 
       state: { 
         prefillRenewal: {
@@ -128,6 +283,13 @@ const Renewals = () => {
     setSelectedRenewal(null);
   };
 
+  const handleExport = () => {
+    toast({
+      title: "Export Started",
+      description: "Renewal forecast is being generated...",
+    });
+  };
+
   const recommendationOptions = [
     { value: 'renew', label: 'Renew', icon: Check, description: 'Continue with current terms' },
     { value: 'renegotiate', label: 'Renegotiate', icon: RotateCcw, description: 'Request better terms' },
@@ -148,15 +310,31 @@ const Renewals = () => {
 
   const monthlyRenewals = getMonthlyRenewals();
 
+  // Empty state for requester with no renewals
+  if (currentUser.role === 'requester' && roleFilteredRenewals.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+          <Calendar className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold mb-2">No Renewals Found</h2>
+        <p className="text-muted-foreground mb-4 max-w-md">
+          You don't have any contracts assigned to you yet. Contracts will appear here when you're designated as the owner.
+        </p>
+        <Button onClick={() => navigate('/approvals')}>
+          View My Requests
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Renewal Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Track and review upcoming contract renewals - 90 day advance notice
-          </p>
+          <h1 className="text-3xl font-bold">{roleConfig.title}</h1>
+          <p className="text-muted-foreground mt-1">{roleConfig.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -178,6 +356,16 @@ const Renewals = () => {
         </div>
       </div>
 
+      {/* Tabs for Manager */}
+      {roleConfig.showTabs && (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "mine" | "team")}>
+          <TabsList>
+            <TabsTrigger value="mine">My Renewals</TabsTrigger>
+            <TabsTrigger value="team">Team Renewals</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
       {/* 90-Day Alert Banner */}
       {pendingAlerts.length > 0 && (
         <div className="rounded-xl border border-status-warning/50 bg-status-warning-bg p-4">
@@ -193,9 +381,6 @@ const Renewals = () => {
                 Start the renewal process early for better negotiation leverage
               </p>
             </div>
-            <Button size="sm" variant="outline" className="gap-1">
-              View All
-            </Button>
           </div>
         </div>
       )}
@@ -239,19 +424,53 @@ const Renewals = () => {
         </div>
       </div>
 
-      {/* Search */}
-      <SearchInput
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder={searchPlaceholder}
-        resultsCount={filteredRenewals.length}
-        totalCount={renewals.length}
-        showResultsCount={searchQuery.length >= 2}
-        syncToUrl={true}
-        className="max-w-md"
-      />
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder={`Search ${roleConfig.title.toLowerCase()}...`}
+          resultsCount={filteredRenewals.length}
+          totalCount={roleFilteredRenewals.length}
+          showResultsCount={searchQuery.length >= 2}
+          syncToUrl={true}
+          className="max-w-md"
+        />
+        
+        {roleConfig.showStrategicToggle && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="strategicOnly"
+              checked={showStrategicOnly}
+              onCheckedChange={(checked) => setShowStrategicOnly(checked === true)}
+            />
+            <Label htmlFor="strategicOnly" className="text-sm cursor-pointer flex items-center gap-1">
+              <Sparkles className="w-4 h-4" />
+              Show Only Strategic (&gt;$50K, AI/ML, Portfolio)
+            </Label>
+          </div>
+        )}
+        
+        <div className="flex-1" />
+        
+        <RenewalFilters
+          showDepartmentFilter={roleConfig.showDepartmentFilter}
+          showAmountFilter={roleConfig.showAmountFilter}
+          showExport={roleConfig.showExport}
+          departmentFilter={departmentFilter}
+          amountFilter={amountFilter}
+          onDepartmentChange={setDepartmentFilter}
+          onAmountChange={setAmountFilter}
+          onExport={handleExport}
+        />
+      </div>
 
-      {viewMode === 'list' ? (
+      {filteredRenewals.length === 0 && searchQuery ? (
+        <NoSearchResults 
+          searchTerm={searchQuery} 
+          onClear={() => setSearchQuery("")} 
+        />
+      ) : viewMode === 'list' ? (
         <>
           {/* Critical Section (<30 days) */}
           {criticalRenewals.length > 0 && (
@@ -279,9 +498,6 @@ const Renewals = () => {
               <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
                 <Bell className="w-5 h-5 text-status-warning" />
                 Urgent - Expiring in 30-90 Days
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                  (Start renewal process now)
-                </span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {urgentRenewals.map((renewal) => (
@@ -409,14 +625,6 @@ const Renewals = () => {
                   style={{ width: `${selectedRenewal?.usageRate}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {(selectedRenewal?.usageRate || 0) >= 70 
-                  ? "Good utilization - consider maintaining or expanding"
-                  : (selectedRenewal?.usageRate || 0) >= 40 
-                    ? "Moderate utilization - review necessity or consolidate licenses"
-                    : "Low utilization - consider reducing or canceling"
-                }
-              </p>
             </div>
 
             {/* Recommendation */}
@@ -455,38 +663,26 @@ const Renewals = () => {
 
             {/* Notes */}
             <div>
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Notes & Next Steps
+              </Label>
               <Textarea
                 id="notes"
-                placeholder="Add any additional notes about this renewal..."
+                placeholder="Add any notes about this renewal..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="mt-1.5"
+                className="mt-2 min-h-[100px]"
               />
             </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            {selectedRenewal && selectedRenewal.daysUntilExpiration <= 90 && selectedRenewal.reviewStatus === 'pending' && (
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={() => {
-                  setShowReviewDialog(false);
-                  handleStartRenewalProcess(selectedRenewal);
-                }}
-              >
-                Start Renewal Process
-              </Button>
-            )}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitReview} disabled={!recommendation}>
-                Submit Review
-              </Button>
-            </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitReview} disabled={!recommendation}>
+              Save Review
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
