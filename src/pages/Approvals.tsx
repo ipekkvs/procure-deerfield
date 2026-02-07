@@ -41,11 +41,16 @@ import {
   Bot,
   HeartPulse,
   TrendingUp,
-  Settings
+  Settings,
+  Scale,
+  Globe,
+  FlaskConical,
+  FileCheck,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'finance-auto' | 'overbudget' | 'multiyear' | 'contracting' | 'cio';
+type ApprovalView = 'all' | 'department' | 'compliance' | 'compliance-auto' | 'it' | 'negotiation' | 'finance' | 'finance-auto' | 'overbudget' | 'multiyear' | 'contracting' | 'cio';
 
 // Mock over-budget requests for demonstration
 const overBudgetRequests = [
@@ -251,6 +256,76 @@ const cioTriggerLabels: Record<CioTriggerType, { label: string; icon: React.Reac
   core_systems: { label: 'Core Systems & Enterprise', icon: <Settings className="w-4 h-4" />, color: 'text-orange-600' },
 };
 
+// Mock Compliance pending requests
+type CompliancePriority = 'high' | 'standard' | 'use_case_change';
+
+interface ComplianceRequest {
+  id: string;
+  title: string;
+  requesterName: string;
+  department: 'investment' | '3dc' | 'deerfield_intelligence' | 'business_operations' | 'external_operations' | 'deerfield_foundation';
+  priority: CompliancePriority;
+  triggers: string[];
+  dataTypes: string[];
+  isNewVendor: boolean;
+  vendorName: string;
+  daysInQueue: number;
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+}
+
+const complianceRequests: ComplianceRequest[] = [
+  {
+    id: 'COMP-001',
+    title: 'Patient Data Analytics Tool',
+    requesterName: 'Emily Brown',
+    department: '3dc',
+    priority: 'high',
+    triggers: ['PHI/Patient data access', 'New vendor requiring data processing agreement'],
+    dataTypes: ['PHI', 'Patient Records'],
+    isNewVendor: true,
+    vendorName: 'HealthData Corp',
+    daysInQueue: 2,
+    urgency: 'high',
+  },
+  {
+    id: 'COMP-002',
+    title: 'International CRM Platform',
+    requesterName: 'Mike Wilson',
+    department: 'business_operations',
+    priority: 'standard',
+    triggers: ['International vendor with data storage (cross-border transfer)'],
+    dataTypes: ['PII', 'Contact Information'],
+    isNewVendor: true,
+    vendorName: 'GlobalCRM EU',
+    daysInQueue: 3,
+    urgency: 'medium',
+  },
+  {
+    id: 'COMP-003',
+    title: 'Zoom AI Features Upgrade',
+    requesterName: 'Sarah Chen',
+    department: 'investment',
+    priority: 'use_case_change',
+    triggers: ['Use case changed on pre-approved vendor - security re-review needed'],
+    dataTypes: ['Meeting Transcripts', 'AI-Generated Summaries'],
+    isNewVendor: false,
+    vendorName: 'Zoom',
+    daysInQueue: 1,
+    urgency: 'medium',
+  },
+];
+
+const complianceAutoApproved = [
+  { id: 'CAA-001', title: 'Salesforce Renewal', vendorName: 'Salesforce', reason: 'Pre-approved vendor, standard use', approvedAt: '1 day ago' },
+  { id: 'CAA-002', title: 'Microsoft 365 Renewal', vendorName: 'Microsoft', reason: 'Pre-approved vendor, no changes', approvedAt: '3 days ago' },
+];
+
+const compliancePriorityLabels: Record<CompliancePriority, { label: string; color: string; bgColor: string }> = {
+  high: { label: '🔴 HIGH PRIORITY - New Vendors with Sensitive Data', color: 'text-status-error', bgColor: 'bg-status-error-bg' },
+  standard: { label: '🟡 STANDARD - Data Processing Agreements', color: 'text-status-warning', bgColor: 'bg-status-warning-bg' },
+  use_case_change: { label: '⚠️ USE CASE CHANGES - Pre-Approved Vendors', color: 'text-primary', bgColor: 'bg-primary/10' },
+};
+
 const Approvals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -291,6 +366,8 @@ const Approvals = () => {
         );
       case 'finance-auto':
         return []; // Handled separately with autoApprovedRequests
+      case 'compliance-auto':
+        return []; // Handled separately with complianceAutoApproved
       case 'overbudget':
         return []; // Handled separately with overBudgetRequests
       case 'multiyear':
@@ -354,11 +431,12 @@ const Approvals = () => {
     { value: 'all', label: 'All', icon: Filter, count: pendingRequests.length },
     { value: 'cio', label: 'CIO Review', icon: ShieldAlert, count: cioRequests.length, highlight: cioRequests.length > 0 },
     { value: 'department', label: 'Dept. Approval', icon: Building2, count: getRequestsForView('department').length },
-    { value: 'compliance', label: 'Compliance', icon: Shield, count: getRequestsForView('compliance').length },
+    { value: 'compliance', label: 'Compliance', icon: Shield, count: complianceRequests.length },
+    { value: 'compliance-auto', label: 'Compliance Auto', icon: ShieldCheck, count: complianceAutoApproved.length, badge: 'FYI' },
     { value: 'it', label: 'IT Review', icon: Monitor, count: getRequestsForView('it').length },
     { value: 'negotiation', label: 'Negotiation', icon: Briefcase, count: getRequestsForView('negotiation').length },
     { value: 'finance', label: 'Requires Approval', icon: DollarSign, count: getRequestsForView('finance').length + overBudgetRequests.length + multiYearRequests.length },
-    { value: 'finance-auto', label: 'Auto-Approved', icon: CheckCircle2, count: autoApprovedRequests.length, badge: 'FYI' },
+    { value: 'finance-auto', label: 'Finance Auto', icon: CheckCircle2, count: autoApprovedRequests.length, badge: 'FYI' },
     { value: 'overbudget', label: 'Over-Budget', icon: AlertTriangle, count: overBudgetRequests.length, highlight: true },
     { value: 'multiyear', label: 'Multi-Year', icon: RefreshCcw, count: multiYearRequests.length, highlight: multiYearRequests.some(r => r.isLowAnnual) },
     { value: 'contracting', label: 'Contracting', icon: FileText, count: getRequestsForView('contracting').length },
@@ -555,6 +633,134 @@ const Approvals = () => {
                   </Button>
                 </div>
               </div>
+            </div>
+          ) : currentView === 'compliance' ? (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="font-semibold text-primary">🚨 Requires Your Review</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Requests with regulatory risk requiring Compliance assessment for data privacy, security, and vendor due diligence.
+                  </p>
+                </div>
+              </div>
+
+              {/* Grouped by priority */}
+              {Object.entries(compliancePriorityLabels).map(([priority, { label, color, bgColor }]) => {
+                const requestsOfPriority = complianceRequests.filter(r => r.priority === priority);
+                if (requestsOfPriority.length === 0) return null;
+                
+                return (
+                  <div key={priority} className="space-y-3">
+                    <h3 className={cn("font-semibold", color)}>{label}</h3>
+                    
+                    {requestsOfPriority.map((request) => (
+                      <div key={request.id} className={cn("rounded-xl border bg-card overflow-hidden", 
+                        request.priority === 'high' ? "border-status-error/30" : "border-border"
+                      )}>
+                        <div className={cn("p-4", request.priority === 'high' && "bg-status-error-bg/50")}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold">{request.title}</h4>
+                                {request.isNewVendor && (
+                                  <span className="text-xs bg-status-warning/20 text-status-warning px-2 py-0.5 rounded-full">
+                                    New Vendor
+                                  </span>
+                                )}
+                                <span className={cn(
+                                  "px-2 py-0.5 text-xs font-medium rounded-full",
+                                  request.urgency === 'critical' ? "bg-status-error/20 text-status-error" :
+                                  request.urgency === 'high' ? "bg-status-warning/20 text-status-warning" :
+                                  "bg-muted text-muted-foreground"
+                                )}>
+                                  {request.urgency}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {request.requesterName} • {getDepartmentLabel(request.department)} • {request.daysInQueue} day{request.daysInQueue !== 1 ? 's' : ''} waiting
+                              </p>
+                              
+                              {/* Data Types */}
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {request.dataTypes.map((type, idx) => (
+                                  <span key={idx} className="text-xs bg-muted px-2 py-0.5 rounded">
+                                    {type}
+                                  </span>
+                                ))}
+                              </div>
+                              
+                              {/* Triggers */}
+                              <div className="mt-2 space-y-1">
+                                {request.triggers.map((trigger, idx) => (
+                                  <div key={idx} className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    {trigger}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Button size="sm">Review Now</Button>
+                              <Button size="sm" variant="outline">Request Info</Button>
+                              <Button size="sm" variant="outline" className="text-primary">
+                                <Scale className="w-3 h-3 mr-1" />
+                                Escalate to Legal
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+
+              {complianceRequests.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  No requests pending Compliance review
+                </div>
+              )}
+            </div>
+          ) : currentView === 'compliance-auto' ? (
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg bg-status-success-bg border border-status-success/30 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-status-success mt-0.5" />
+                <div>
+                  <p className="font-semibold text-status-success">✅ Auto-Approved (FYI Only)</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Pre-approved vendor renewals with no use case changes. Compliance skipped for standard use.
+                  </p>
+                </div>
+              </div>
+
+              {complianceAutoApproved.length > 0 ? (
+                <div className="space-y-3">
+                  {complianceAutoApproved.map((req) => (
+                    <div key={req.id} className="rounded-xl border border-status-success/30 bg-card p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-status-success" />
+                            <h4 className="font-semibold">{req.title}</h4>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {req.vendorName} • {req.reason}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{req.approvedAt}</p>
+                        </div>
+                        <Button variant="outline" size="sm">View Details</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No auto-approved requests this week
+                </div>
+              )}
             </div>
           ) : currentView === 'overbudget' ? (
             <div className="space-y-6">
@@ -946,11 +1152,8 @@ const Approvals = () => {
                 </div>
 
                 {/* Context message for filtered views */}
-                {currentView !== 'all' && (
+                {(currentView === 'it' || currentView === 'negotiation' || currentView === 'department' || currentView === 'finance' || currentView === 'contracting') && (
                   <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-                    {currentView === 'compliance' && (
-                      <>Showing new purchase requests requiring compliance review. Renewals skip this step.</>
-                    )}
                     {currentView === 'it' && (
                       <>Showing new purchase requests requiring IT review. Renewals skip this step.</>
                     )}

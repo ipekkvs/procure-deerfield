@@ -64,6 +64,8 @@ export interface RiskAssessment {
   
   // Auto-approval flags
   financeAutoApproved: boolean;
+  complianceSkipped: boolean;
+  complianceSkipReason: string;
   
   // Detected flags
   aiMlDetected: boolean;
@@ -72,8 +74,9 @@ export interface RiskAssessment {
   isOverBudget: boolean;
   overBudgetAmount: number;
   
-  // CIO-specific triggers (for display)
+  // Trigger arrays (for display)
   cioTriggers: string[];
+  complianceTriggers: string[];
   
   // Routing explanation
   routingReasons: string[];
@@ -287,31 +290,49 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     complianceTriggers.push('PHI/Patient data access');
   }
   if (factors.isPatientFacing) {
-    complianceTriggers.push('Patient-facing tool');
+    complianceTriggers.push('Portfolio company patient-facing tool');
+  }
+  if (hasAnyPortfolioAccess && factors.accessesPhi) {
+    complianceTriggers.push('Portfolio company patient data');
   }
   if (hasInvestmentDataRisk) {
     complianceTriggers.push('Investment research/proprietary data');
   }
   if (hasHealthcareRisk) {
-    complianceTriggers.push('Healthcare/medical device related');
-  }
-  if (factors.isNewVendor && factors.hasDataStorage) {
-    complianceTriggers.push('New vendor with data processing');
-  }
-  if (factors.isInternationalWithDataStorage) {
-    complianceTriggers.push('International vendor with data storage');
+    complianceTriggers.push('Healthcare delivery or medical device related');
   }
   if (factors.isFdaRegulated || factors.isClinicalTrials) {
-    complianceTriggers.push('FDA-regulated or clinical trials');
+    complianceTriggers.push('FDA-regulated activities or clinical trials');
+  }
+  if (factors.isNewVendor && factors.hasDataStorage) {
+    complianceTriggers.push('New vendor requiring data processing agreement');
+  }
+  if (factors.isInternationalWithDataStorage) {
+    complianceTriggers.push('International vendor with data storage (cross-border transfer)');
+  }
+  // Use case changed on pre-approved vendor
+  if (useCaseChanged && isPreApproved) {
+    complianceTriggers.push('Use case changed on pre-approved vendor - security re-review needed');
   }
   
-  // Skip compliance for renewals with no changes from pre-approved vendors
+  // Skip compliance for renewals with no changes from pre-approved vendors (only if no triggers)
   const skipCompliance = 
     requestType === 'renewal' && 
     !useCaseChanged && 
-    isPreApproved;
+    isPreApproved &&
+    complianceTriggers.length === 0;
   
-  const requiresCompliance = complianceTriggers.length > 0 && !skipCompliance;
+  const complianceSkipReason = skipCompliance 
+    ? `Pre-approved vendor (${vendorName}) renewal with no use case changes`
+    : '';
+  
+  const requiresCompliance = complianceTriggers.length > 0 || (!skipCompliance && (
+    factors.accessesPhi ||
+    hasInvestmentDataRisk ||
+    hasHealthcareRisk ||
+    (factors.isNewVendor && factors.hasDataStorage) ||
+    factors.isInternationalWithDataStorage
+  ));
   
   // ============= IT TRIGGERS =============
   const itTriggers: string[] = [];
@@ -466,6 +487,9 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     isOverBudget,
     overBudgetAmount: isOverBudget ? amount - departmentBudgetRemaining : 0,
     cioTriggers,
+    complianceTriggers,
+    complianceSkipped: skipCompliance,
+    complianceSkipReason,
     routingReasons,
     approvalPath,
   };

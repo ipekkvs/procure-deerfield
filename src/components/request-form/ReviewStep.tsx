@@ -12,7 +12,8 @@ import { ApprovalWorkflowDiagram, WorkflowNode, WorkflowStep, ParallelSteps } fr
 import { RiskAssessmentPanel } from "./RiskAssessmentPanel";
 import { FinanceApprovalNotice } from "./FinanceApprovalNotice";
 import { CioApprovalNotice } from "./CioApprovalNotice";
-import { calculateRiskAssessment, RiskAssessment } from "@/lib/riskScoring";
+import { ComplianceApprovalNotice } from "./ComplianceApprovalNotice";
+import { calculateRiskAssessment, RiskAssessment, isPreApprovedVendor } from "@/lib/riskScoring";
 function buildWorkflowNodes(
   requestType: 'new_purchase' | 'renewal',
   budgetedAmount: number,
@@ -201,6 +202,18 @@ export function ReviewStep({ formData }: StepProps) {
           <CioApprovalNotice assessment={assessment} />
         </div>
       )}
+
+      {/* Compliance Approval Notice */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Compliance Review Status</h2>
+        <ComplianceApprovalNotice 
+          assessment={assessment}
+          vendorName={formData.vendorName}
+          isPreApprovedVendor={isPreApprovedVendor(formData.vendorName)}
+          useCaseChanged={formData.useCaseChanged}
+          useCaseChangeDescription={formData.useCaseChangeDescription}
+        />
+      </div>
 
       {/* Finance Approval Notice */}
       <div>
