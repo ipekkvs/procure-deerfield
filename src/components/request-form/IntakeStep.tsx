@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CategorySelector } from "./CategorySelector";
+import { TechnicalIntegrationSection } from "./TechnicalIntegrationSection";
 import { StepProps } from "./types";
 import { 
   RequestCategory, 
@@ -435,6 +436,9 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
           />
         </div>
       )}
+
+      {/* Technical Integration Section */}
+      <TechnicalIntegrationSection formData={formData} updateFormData={updateFormData} />
 
       {/* Redundancy Check */}
       <div className={cn(

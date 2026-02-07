@@ -8,6 +8,15 @@ import {
 import { UploadedFile } from "./FileUpload";
 import { ContractTerm, RiskFactors } from "@/lib/riskScoring";
 
+export type IntegrationType = 
+  | 'none' 
+  | 'sso_only' 
+  | 'read_only_api' 
+  | 'bidirectional_api' 
+  | 'core_system' 
+  | 'network_vpn'
+  | 'not_sure';
+
 export interface RequestFormData {
   // Step 1: Initial Intake
   description: string;
@@ -37,6 +46,17 @@ export interface RequestFormData {
   
   // Vendor name (for pre-approved vendor detection)
   vendorName: string;
+  
+  // Technical Integration (IT review triggers)
+  integrationType: IntegrationType;
+  requiresDataStorage: boolean;
+  requiresNetworkAccess: boolean;
+  requiresCustomDevelopment: boolean;
+  sensitiveDataAccess: {
+    phi: boolean;
+    investmentData: boolean;
+    pii: boolean;
+  };
   
   // Step 2: Requirements Gathering
   title: string;
@@ -80,6 +100,17 @@ export const initialFormData: RequestFormData = {
   
   // Vendor name
   vendorName: "",
+  
+  // Technical Integration
+  integrationType: 'none',
+  requiresDataStorage: false,
+  requiresNetworkAccess: false,
+  requiresCustomDevelopment: false,
+  sensitiveDataAccess: {
+    phi: false,
+    investmentData: false,
+    pii: false,
+  },
   
   title: "",
   documentationUrls: [],
