@@ -2,25 +2,78 @@ import { useViewMode } from '@/contexts/ViewModeContext';
 import { Button } from '@/components/ui/button';
 import { User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
-export function ViewModeSwitcher() {
+interface ViewModeSwitcherProps {
+  collapsed?: boolean;
+}
+
+export function ViewModeSwitcher({ collapsed = false }: ViewModeSwitcherProps) {
   const { viewMode, setViewMode, canSwitchViews, individualLabel, roleLabel } = useViewMode();
   
   if (!canSwitchViews) {
     return null;
   }
 
+  // Collapsed version - just show icons with tooltips
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode('individual')}
+              className={cn(
+                "h-8 w-8",
+                viewMode === 'individual' 
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+                  : "text-sidebar-foreground hover:text-foreground"
+              )}
+            >
+              <User className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{individualLabel}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode('role')}
+              className={cn(
+                "h-8 w-8",
+                viewMode === 'role' 
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+                  : "text-sidebar-foreground hover:text-foreground"
+              )}
+            >
+              <Briefcase className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{roleLabel}</TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  }
+
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted border">
+    <div className="flex items-center gap-1 p-1 rounded-lg bg-sidebar-accent/50 border border-sidebar-border">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setViewMode('individual')}
         className={cn(
-          "gap-2 h-8 px-3 text-xs font-medium transition-all",
+          "gap-2 h-7 px-2.5 text-xs font-medium transition-all flex-1",
           viewMode === 'individual' 
             ? "bg-background shadow-sm text-foreground" 
-            : "text-muted-foreground hover:text-foreground"
+            : "text-sidebar-foreground hover:text-foreground hover:bg-transparent"
         )}
       >
         <User className="w-3.5 h-3.5" />
@@ -31,10 +84,10 @@ export function ViewModeSwitcher() {
         size="sm"
         onClick={() => setViewMode('role')}
         className={cn(
-          "gap-2 h-8 px-3 text-xs font-medium transition-all",
+          "gap-2 h-7 px-2.5 text-xs font-medium transition-all flex-1",
           viewMode === 'role' 
             ? "bg-background shadow-sm text-foreground" 
-            : "text-muted-foreground hover:text-foreground"
+            : "text-sidebar-foreground hover:text-foreground hover:bg-transparent"
         )}
       >
         <Briefcase className="w-3.5 h-3.5" />
