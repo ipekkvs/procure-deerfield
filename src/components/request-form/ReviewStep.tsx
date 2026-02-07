@@ -29,24 +29,38 @@ function buildWorkflowNodes(
   nodes.push({
     id: 'intake_requirements',
     label: 'Intake & Requirements',
-    description: 'Steps 1 & 2 - Form submission',
+    description: 'Form submission complete',
     status: 'completed',
     approver: { name: 'You', role: 'Requester' },
     completedAt: 'Just now',
+    whyRequired: 'Every request starts with intake to gather requirements and route appropriately.',
+    comments: 'Request submitted successfully with all required information.',
   } as WorkflowStep);
 
   // Step 3: Department Pre-Approval
   nodes.push({
     id: 'department_pre',
-    label: 'Department Pre-Approval',
-    description: 'Step 3 - Department/Pod Leader review',
+    label: 'Manager Approval',
+    description: 'Department/Pod Leader review',
     status: 'current',
-    approver: { name: 'Department Leader', role: 'Approver' },
+    approver: { name: 'Department Leader', role: 'Manager' },
+    slaHoursRemaining: 48,
+    whyRequired: 'Manager must approve all purchases for their department to ensure business need and budget alignment.',
   } as WorkflowStep);
 
   // Step 4: Compliance & IT Review (Parallel) - Conditional based on assessment
   const complianceStatus = assessment.complianceSkipped ? 'skipped' : (assessment.requiresCompliance ? 'pending' : 'skipped');
   const itStatus = assessment.itSkipped ? 'skipped' : (assessment.requiresIt ? 'pending' : 'skipped');
+  
+  // Build compliance trigger reason for whyRequired
+  const complianceWhyRequired = assessment.complianceTriggers.length > 0 
+    ? `Required because: ${assessment.complianceTriggers.slice(0, 2).join(', ')}` 
+    : undefined;
+  
+  // Build IT trigger reason for whyRequired  
+  const itWhyRequired = assessment.itTriggers.length > 0 
+    ? `Required because: ${assessment.itTriggers.slice(0, 2).join(', ')}` 
+    : undefined;
   
   // Show parallel reviews if either is required
   if (assessment.requiresIt || assessment.requiresCompliance) {
@@ -54,8 +68,8 @@ function buildWorkflowNodes(
       steps: [
         {
           id: 'compliance',
-          label: 'Compliance Review',
-          description: assessment.requiresCompliance ? 'Data privacy, security & regulatory' : undefined,
+          label: 'Compliance',
+          description: assessment.requiresCompliance ? 'Data privacy & regulatory' : undefined,
           status: complianceStatus,
           conditionLabel: assessment.complianceSkipped 
             ? assessment.complianceSkipReason || 'Skipped - Not required'
@@ -63,18 +77,22 @@ function buildWorkflowNodes(
           approver: assessment.requiresCompliance 
             ? { name: 'Compliance Team', role: 'Reviewer' } 
             : undefined,
+          slaHoursRemaining: assessment.requiresCompliance ? 120 : undefined,
+          whyRequired: assessment.requiresCompliance ? complianceWhyRequired : undefined,
         } as WorkflowStep,
         {
           id: 'it_review',
-          label: 'IT Review',
-          description: assessment.requiresIt ? 'Technical compatibility & security' : undefined,
+          label: 'IT Security',
+          description: assessment.requiresIt ? 'Technical & security review' : undefined,
           status: itStatus,
           conditionLabel: assessment.itSkipped 
             ? assessment.itSkipReason || 'Skipped - Not required'
             : undefined,
           approver: assessment.requiresIt 
-            ? { name: 'IT Team', role: 'Reviewer' } 
+            ? { name: 'IT Security Team', role: 'Reviewer' } 
             : undefined,
+          slaHoursRemaining: assessment.requiresIt ? 72 : undefined,
+          whyRequired: assessment.requiresIt ? itWhyRequired : undefined,
         } as WorkflowStep,
       ],
       label: assessment.requiresParallelItCompliance ? 'Reviews in Parallel' : 'Technical Reviews',
@@ -85,15 +103,15 @@ function buildWorkflowNodes(
       steps: [
         {
           id: 'compliance',
-          label: 'Compliance Review',
+          label: 'Compliance',
           status: 'skipped',
-          conditionLabel: 'Skipped - Pre-approved vendor renewal',
+          conditionLabel: 'Pre-approved vendor renewal with no changes',
         } as WorkflowStep,
         {
           id: 'it_review',
-          label: 'IT Review',
+          label: 'IT Security',
           status: 'skipped',
-          conditionLabel: 'Skipped - No technical changes',
+          conditionLabel: 'No technical changes detected',
         } as WorkflowStep,
       ],
       label: 'Technical Reviews',
@@ -104,36 +122,57 @@ function buildWorkflowNodes(
   nodes.push({
     id: 'negotiation',
     label: 'Negotiation',
-    description: 'Director of Operations review',
+    description: requiresNegotiation ? 'Director of Operations review' : undefined,
     status: requiresNegotiation ? 'pending' : 'skipped',
     isConditional: true,
     conditionLabel: requiresNegotiation 
-      ? `Required - Amount exceeds $25,000`
-      : 'Skipped - Under $25K threshold',
+      ? `Amount exceeds $25,000`
+      : 'Under $25K threshold',
     approver: requiresNegotiation 
       ? { name: 'Director of Operations', role: 'Negotiator' } 
+      : undefined,
+    slaHoursRemaining: requiresNegotiation ? 72 : undefined,
+    whyRequired: requiresNegotiation 
+      ? 'High-value purchases require negotiation to ensure best pricing and terms.'
       : undefined,
   } as WorkflowStep);
 
   // Step 6: Finance & Department Final Approval (can be parallel if negotiated)
-  // For preview, we show them as potentially parallel
+  const financeWhyRequired = assessment.financeAutoApproved 
+    ? 'Auto-approved: Under $10K, within budget, single-year term'
+    : assessment.isOverBudget 
+      ? 'Required because request exceeds department budget'
+      : budgetedAmount >= 10000 
+        ? 'Required for purchases $10K or more'
+        : 'Budget verification required';
+
   nodes.push({
     steps: [
       {
         id: 'finance_final',
-        label: 'Finance Approval',
-        description: 'Final budget approval',
-        status: 'pending',
+        label: 'Finance',
+        description: assessment.financeAutoApproved ? 'Auto-approved' : 'Budget approval',
+        status: assessment.financeAutoApproved ? 'completed' : 'pending',
         approver: { name: 'Finance Team', role: 'Approver' },
+        slaHoursRemaining: assessment.financeAutoApproved ? undefined : 48,
+        whyRequired: financeWhyRequired,
+        completedAt: assessment.financeAutoApproved ? 'Auto-approved' : undefined,
       } as WorkflowStep,
       {
         id: 'department_final',
         label: 'Dept. Re-Approval',
-        description: 'If price was negotiated',
-        status: 'pending',
+        description: requiresNegotiation ? 'Price change review' : undefined,
+        status: requiresNegotiation ? 'pending' : 'skipped',
         isConditional: true,
-        conditionLabel: 'Only if price changes',
-        approver: { name: 'Department Head', role: 'Approver' },
+        conditionLabel: requiresNegotiation 
+          ? 'Required after negotiation'
+          : 'No re-approval needed',
+        approver: requiresNegotiation 
+          ? { name: 'Department Head', role: 'Approver' } 
+          : undefined,
+        whyRequired: requiresNegotiation 
+          ? 'Department must re-approve if price changes during negotiation.'
+          : undefined,
       } as WorkflowStep,
     ],
     label: 'Final Approvals',
@@ -141,12 +180,18 @@ function buildWorkflowNodes(
 
   // Step 7: CIO Approval (conditional on triggers)
   if (assessment.requiresCio) {
+    const cioWhyRequired = assessment.cioTriggers.length > 0 
+      ? `Required because: ${assessment.cioTriggers.slice(0, 2).join(', ')}`
+      : 'Strategic review required';
+      
     nodes.push({
       id: 'cio_approval',
       label: 'CIO Approval',
       description: 'Strategic & platform review',
       status: 'pending',
       approver: { name: 'CIO', role: 'Executive Approver' },
+      slaHoursRemaining: 120,
+      whyRequired: cioWhyRequired,
     } as WorkflowStep);
   }
 
@@ -154,9 +199,11 @@ function buildWorkflowNodes(
   nodes.push({
     id: 'contracting',
     label: 'Contracting',
-    description: 'Contract signing & system setup',
+    description: 'Contract signing & setup',
     status: 'pending',
-    approver: { name: 'Finance', role: 'Contract Admin' },
+    approver: { name: 'Procurement', role: 'Contract Admin' },
+    slaHoursRemaining: 48,
+    whyRequired: 'Final step to execute contract and configure vendor access.',
   } as WorkflowStep);
 
   return nodes;
