@@ -1,40 +1,40 @@
 import { getCurrentUser } from "@/lib/mockData";
 import {
-  CIODashboard,
-  FinanceDashboard,
-  ComplianceDashboard,
-  ITDashboard,
-  DirectorOpsDashboard,
-  DepartmentHeadDashboard,
-  RequesterDashboard,
-} from "@/components/dashboards";
+  RequesterSummary,
+  ManagerSummary,
+  FinanceSummary,
+  ComplianceSummary,
+  ITSummary,
+  CIOSummary,
+  DirectorOpsSummary,
+} from "@/components/dashboards/summary";
 
 const Dashboard = () => {
   const currentUser = getCurrentUser();
   
-  // Route to appropriate dashboard based on user role
+  // Route to appropriate summary dashboard based on user role
   switch (currentUser.role) {
     case 'cio':
-      return <CIODashboard userName={currentUser.name} />;
+      return <CIOSummary userName={currentUser.name} />;
     
     case 'finance':
-      return <FinanceDashboard userName={currentUser.name} />;
+      return <FinanceSummary userName={currentUser.name} />;
     
     case 'compliance':
-      return <ComplianceDashboard userName={currentUser.name} />;
+      return <ComplianceSummary userName={currentUser.name} />;
     
     case 'it':
-      return <ITDashboard userName={currentUser.name} />;
+      return <ITSummary userName={currentUser.name} />;
     
     case 'director_operations':
-      return <DirectorOpsDashboard userName={currentUser.name} />;
+      return <DirectorOpsSummary userName={currentUser.name} />;
     
     case 'department_leader':
-      return <DepartmentHeadDashboard userName={currentUser.name} user={currentUser} />;
+      return <ManagerSummary userName={currentUser.name} user={currentUser} />;
     
     case 'requester':
     default:
-      return <RequesterDashboard userName={currentUser.name} user={currentUser} />;
+      return <RequesterSummary userName={currentUser.name} user={currentUser} />;
   }
 };
 
