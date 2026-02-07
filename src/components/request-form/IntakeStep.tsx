@@ -109,11 +109,31 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
         />
         
         {keywordAlerts.preApproved && formData.vendorName && (
-          <div className="mt-4 p-3 rounded-lg bg-status-success-bg border border-status-success/20 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-status-success" />
-            <span className="text-sm">
-              <strong>{formData.vendorName}</strong> is a pre-approved vendor - streamlined review available
-            </span>
+          <div className="mt-4 p-4 rounded-lg bg-status-success-bg border border-status-success/20">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-status-success mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-status-success">
+                  ✓ Pre-Approved Vendor Detected
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong>{formData.vendorName}</strong> is on the pre-approved vendor list.
+                </p>
+                <div className="mt-3 text-sm space-y-1">
+                  <p className="text-muted-foreground">
+                    <span className="text-status-success">→</span> If using for <strong>standard purposes</strong> with no changes: Compliance review will be <strong className="text-status-success">SKIPPED</strong>
+                  </p>
+                  <p className="text-muted-foreground">
+                    <span className="text-status-warning">→</span> If enabling <strong>new features</strong> or changing use case: Compliance review will be <strong className="text-status-warning">REQUIRED</strong>
+                  </p>
+                </div>
+                {formData.requestType === 'renewal' && (
+                  <p className="text-xs text-muted-foreground mt-3 italic">
+                    Please confirm below if anything has changed from your previous use.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
