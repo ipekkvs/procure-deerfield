@@ -22,6 +22,9 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Handshake, AlertTriangle, BarChart3, Clock, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 export function DirectorOpsApprovals() {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
@@ -30,70 +33,61 @@ export function DirectorOpsApprovals() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [openSections, setOpenSections] = useState({ negotiation: true, bottlenecks: true });
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Negotiation queue
-  const negotiationQueue: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        r.budgetedAmount > 50000 && 
-        r.currentStep === 'negotiation' &&
-        !approvedIds.has(r.id)
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'high' as const,
-      })),
-    [approvedIds]
+  // All requests base
+  const allRequestsBase = useMemo(() => 
+    requests.map(r => ({
+      id: r.id,
+      title: r.title,
+      department: r.department,
+      amount: r.budgetedAmount,
+      requesterName: r.requesterName,
+      daysWaiting: r.daysInCurrentStage,
+      isOverBudget: r.budgetedAmount > 25000,
+      isNewVendor: !r.vendorId,
+      urgency: r.urgency,
+      status: r.status,
+      currentStep: r.currentStep,
+    })),
+    []
   );
 
-  // Bottlenecks
-  const bottlenecks: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => r.status === 'pending' && r.daysInCurrentStage > 5 && !approvedIds.has(r.id))
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'critical' as const,
-      })),
-    [approvedIds]
+  // Apply search first
+  const searchedRequests = useMemo(() => 
+    searchItems(allRequestsBase, searchTerm, ['title', 'department', 'requesterName', 'status']),
+    [allRequestsBase, searchTerm]
   );
 
-  // All requests with filters
+  // Negotiation queue from searched
+  const negotiationQueue = useMemo(() => 
+    searchedRequests.filter(r => 
+      r.status === 'pending' && 
+      r.amount > 50000 && 
+      r.currentStep === 'negotiation' &&
+      !approvedIds.has(r.id)
+    ),
+    [searchedRequests, approvedIds]
+  );
+
+  // Bottlenecks from searched
+  const bottlenecks = useMemo(() => 
+    searchedRequests.filter(r => 
+      r.status === 'pending' && 
+      r.daysWaiting > 5 && 
+      !approvedIds.has(r.id)
+    ),
+    [searchedRequests, approvedIds]
+  );
+
+  // All requests with additional filters
   const allRequests = useMemo(() => {
-    return requests
-      .filter(r => {
-        if (statusFilter !== 'all' && r.status !== statusFilter) return false;
-        if (departmentFilter !== 'all' && r.department !== departmentFilter) return false;
-        return true;
-      })
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: r.budgetedAmount > 25000,
-        isNewVendor: !r.vendorId,
-        urgency: r.urgency,
-        status: r.status,
-        currentStep: r.currentStep,
-      }));
-  }, [statusFilter, departmentFilter]);
+    return searchedRequests.filter(r => {
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (departmentFilter !== 'all' && r.department !== departmentFilter) return false;
+      return true;
+    });
+  }, [searchedRequests, statusFilter, departmentFilter]);
 
   // Stats
   const avgCycleTime = 6.5;
@@ -143,6 +137,17 @@ export function DirectorOpsApprovals() {
           Complete procurement oversight
         </p>
       </div>
+
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search all requests..."
+        resultsCount={searchedRequests.length}
+        totalCount={allRequestsBase.length}
+        showResultsCount={searchTerm.length >= 2}
+        syncToUrl={true}
+      />
 
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-4">

@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { RenewalCard } from "@/components/RenewalCard";
 import { 
   renewals, 
   formatCurrency, 
   formatDate,
-  Renewal 
+  Renewal,
+  getCurrentUser 
 } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Search, 
   Calendar, 
   AlertTriangle,
   TrendingUp,
@@ -37,10 +36,14 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 const Renewals = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const currentUser = getCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRenewal, setSelectedRenewal] = useState<Renewal | null>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
@@ -48,15 +51,23 @@ const Renewals = () => {
   const [notes, setNotes] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
+  // Role-based placeholder
+  const isEnterpriseRole = ['finance', 'compliance', 'it', 'cio', 'director_operations'].includes(currentUser.role);
+  const searchPlaceholder = isEnterpriseRole ? "Search all renewals..." : "Search my renewals...";
+
   // Sort renewals by days until expiration
   const sortedRenewals = [...renewals].sort((a, b) => 
     a.daysUntilExpiration - b.daysUntilExpiration
   );
 
-  // Filter renewals
-  const filteredRenewals = sortedRenewals.filter(r =>
-    r.vendorName.toLowerCase().includes(searchQuery.toLowerCase())
+  // Apply search filter
+  const searchedRenewals = useMemo(() => 
+    searchItems(sortedRenewals, searchQuery, ['vendorName']),
+    [sortedRenewals, searchQuery]
   );
+
+  // Use searched renewals for filtering
+  const filteredRenewals = searchedRenewals;
 
   // Group by urgency
   const criticalRenewals = filteredRenewals.filter(r => 
@@ -229,15 +240,16 @@ const Renewals = () => {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search vendors..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      <SearchInput
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder={searchPlaceholder}
+        resultsCount={filteredRenewals.length}
+        totalCount={renewals.length}
+        showResultsCount={searchQuery.length >= 2}
+        syncToUrl={true}
+        className="max-w-md"
+      />
 
       {viewMode === 'list' ? (
         <>

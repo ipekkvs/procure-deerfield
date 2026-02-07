@@ -13,23 +13,21 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Shield, Plug, Database, Settings2, CheckCircle2, Eye } from "lucide-react";
 import { preApprovedVendors } from "@/lib/riskScoring";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 export function ITApprovals() {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [openSections, setOpenSections] = useState({ newVendor: true, integration: true, dataAccess: false, useCase: false, auto: false });
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // New vendors needing security assessment
-  const newVendors: ApprovalRequest[] = useMemo(() => 
+  // All IT requests (base)
+  const allItRequests = useMemo(() => 
     requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.itApproved && 
-        !approvedIds.has(r.id) &&
-        !r.vendorId &&
-        !preApprovedVendors.some(v => r.title.toLowerCase().includes(v.toLowerCase()))
-      )
+      .filter(r => r.status === 'pending' && !r.itApproved && !approvedIds.has(r.id))
       .map(r => ({
         id: r.id,
         title: r.title,
@@ -38,80 +36,38 @@ export function ITApprovals() {
         requesterName: r.requesterName,
         daysWaiting: r.daysInCurrentStage,
         isOverBudget: false,
-        isNewVendor: true,
-        urgency: 'critical' as const,
+        isNewVendor: !r.vendorId,
+        urgency: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        description: r.description,
+        vendorId: r.vendorId,
+        requestType: r.requestType,
       })),
     [approvedIds]
+  );
+
+  // Apply search
+  const searchedRequests = useMemo(() => 
+    searchItems(allItRequests, searchTerm, ['title', 'department']),
+    [allItRequests, searchTerm]
+  );
+
+  // New vendors needing security assessment
+  const newVendors = searchedRequests.filter(r => 
+    r.isNewVendor && !preApprovedVendors.some(v => r.title.toLowerCase().includes(v.toLowerCase()))
   );
 
   // Integration requests
-  const integrationRequests: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.itApproved && 
-        !approvedIds.has(r.id) &&
-        (r.description.toLowerCase().includes('api') || r.description.toLowerCase().includes('integration'))
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'medium' as const,
-      })),
-    [approvedIds]
+  const integrationRequests = searchedRequests.filter(r => 
+    r.description?.toLowerCase().includes('api') || r.description?.toLowerCase().includes('integration')
   );
 
   // Data access
-  const dataAccessRequests: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.itApproved && 
-        !approvedIds.has(r.id) &&
-        (r.description.toLowerCase().includes('patient') || r.department === 'investment')
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'high' as const,
-      })),
-    [approvedIds]
+  const dataAccessRequests = searchedRequests.filter(r => 
+    r.description?.toLowerCase().includes('patient') || r.department === 'investment'
   );
 
   // Use case changes
-  const useCaseChanges: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.itApproved && 
-        !approvedIds.has(r.id) &&
-        r.requestType === 'renewal'
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: false,
-        urgency: 'low' as const,
-      })),
-    [approvedIds]
-  );
+  const useCaseChanges = searchedRequests.filter(r => r.requestType === 'renewal');
 
   const autoApproved = requests.filter(r => 
     r.status === 'approved' && 
@@ -151,7 +107,7 @@ export function ITApprovals() {
     toast({ title: "Request Rejected", description: "IT security review failed.", variant: "destructive" });
   }, []);
 
-  const totalPending = newVendors.length + integrationRequests.length + dataAccessRequests.length + useCaseChanges.length;
+  const totalPending = searchedRequests.length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -163,8 +119,23 @@ export function ITApprovals() {
         </p>
       </div>
 
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search IT reviews..."
+        resultsCount={searchedRequests.length}
+        totalCount={allItRequests.length}
+        showResultsCount={searchTerm.length >= 2}
+        syncToUrl={true}
+      />
+
       {totalPending === 0 ? (
-        <EmptyState />
+        searchTerm.length >= 2 ? (
+          <NoSearchResults searchTerm={searchTerm} onClear={() => setSearchTerm("")} />
+        ) : (
+          <EmptyState />
+        )
       ) : (
         <div className="space-y-4 max-w-4xl">
           {/* New Vendors */}

@@ -13,17 +13,32 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, DollarSign, Bot, Building2, Shield, Eye, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function CIOApprovals() {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [openSections, setOpenSections] = useState({ large: true, ai: true, portfolio: false, sensitive: false });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [includeAllRequests, setIncludeAllRequests] = useState(false);
 
-  // Large purchases >$50K
-  const largePurchases: ApprovalRequest[] = useMemo(() => 
+  // All strategic requests for CIO (base list)
+  const allCioRequests = useMemo(() => 
     requests
-      .filter(r => r.status === 'pending' && r.budgetedAmount > 50000 && !approvedIds.has(r.id))
+      .filter(r => {
+        if (approvedIds.has(r.id)) return false;
+        if (r.status !== 'pending') return false;
+        // CIO sees: >$50K, AI/ML, portfolio access, sensitive data
+        const isLarge = r.budgetedAmount > 50000;
+        const isAiMl = r.title.toLowerCase().includes('ai') || r.description.toLowerCase().includes('machine learning');
+        const isPortfolio = r.department === 'investment';
+        const isSensitive = r.description.toLowerCase().includes('patient') || r.description.toLowerCase().includes('hipaa');
+        return includeAllRequests || isLarge || isAiMl || isPortfolio || isSensitive;
+      })
       .map(r => ({
         id: r.id,
         title: r.title,
@@ -33,75 +48,26 @@ export function CIOApprovals() {
         daysWaiting: r.daysInCurrentStage,
         isOverBudget: false,
         isNewVendor: !r.vendorId,
-        urgency: 'critical' as const,
+        urgency: (r.budgetedAmount > 50000 ? 'critical' : 'high') as 'critical' | 'high',
+        description: r.description,
       })),
-    [approvedIds]
+    [approvedIds, includeAllRequests]
   );
 
-  // AI/ML tools
-  const aiMlTools: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !approvedIds.has(r.id) &&
-        (r.title.toLowerCase().includes('ai') || r.description.toLowerCase().includes('machine learning'))
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'high' as const,
-      })),
-    [approvedIds]
+  // Apply search
+  const searchedRequests = useMemo(() => 
+    searchItems(allCioRequests, searchTerm, ['title', 'department']),
+    [allCioRequests, searchTerm]
   );
 
-  // Portfolio integrations
-  const portfolioIntegrations: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !approvedIds.has(r.id) &&
-        r.department === 'investment'
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'medium' as const,
-      })),
-    [approvedIds]
+  // Categorize searched requests
+  const largePurchases = searchedRequests.filter(r => r.amount > 50000);
+  const aiMlTools = searchedRequests.filter(r => 
+    r.title.toLowerCase().includes('ai') || (r.description?.toLowerCase().includes('machine learning'))
   );
-
-  // Sensitive data access
-  const sensitiveDataRequests: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !approvedIds.has(r.id) &&
-        (r.description.toLowerCase().includes('patient') || r.description.toLowerCase().includes('hipaa'))
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'high' as const,
-      })),
-    [approvedIds]
+  const portfolioIntegrations = searchedRequests.filter(r => r.department === 'investment');
+  const sensitiveDataRequests = searchedRequests.filter(r => 
+    r.description?.toLowerCase().includes('patient') || r.description?.toLowerCase().includes('hipaa')
   );
 
   const handleQuickApprove = useCallback((id: string) => {
@@ -137,7 +103,7 @@ export function CIOApprovals() {
     toast({ title: "Request Rejected", description: "CIO review declined.", variant: "destructive" });
   }, []);
 
-  const totalPending = largePurchases.length + aiMlTools.length + portfolioIntegrations.length + sensitiveDataRequests.length;
+  const totalPending = searchedRequests.length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -149,8 +115,38 @@ export function CIOApprovals() {
         </p>
       </div>
 
+      {/* Search with toggle */}
+      <div className="space-y-3">
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search strategic approvals..."
+          resultsCount={searchedRequests.length}
+          totalCount={allCioRequests.length}
+          showResultsCount={searchTerm.length >= 2}
+          syncToUrl={true}
+        />
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="include-all" 
+            checked={includeAllRequests}
+            onCheckedChange={(checked) => setIncludeAllRequests(checked as boolean)}
+          />
+          <label
+            htmlFor="include-all"
+            className="text-sm text-muted-foreground cursor-pointer"
+          >
+            Include all requests (not just strategic)
+          </label>
+        </div>
+      </div>
+
       {totalPending === 0 ? (
-        <EmptyState />
+        searchTerm.length >= 2 ? (
+          <NoSearchResults searchTerm={searchTerm} onClear={() => setSearchTerm("")} />
+        ) : (
+          <EmptyState />
+        )
       ) : (
         <div className="space-y-4 max-w-4xl">
           {/* Large Purchases */}
