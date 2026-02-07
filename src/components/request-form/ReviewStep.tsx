@@ -3,11 +3,12 @@ import {
   formatCurrency, 
   getDepartmentLabel, 
   getSubDepartmentLabel,
-  PurchaseRequest
+  departmentBudgets
 } from "@/lib/mockData";
-import { CheckCircle2, DollarSign, AlertCircle, Paperclip } from "lucide-react";
+import { CheckCircle2, DollarSign, AlertCircle, Paperclip, Bot, Building2 } from "lucide-react";
 import { ApprovalWorkflowDiagram, WorkflowNode, WorkflowStep, ParallelSteps } from "@/components/ApprovalWorkflowDiagram";
-
+import { RiskAssessmentPanel } from "./RiskAssessmentPanel";
+import { calculateRiskAssessment } from "@/lib/riskScoring";
 function buildWorkflowNodes(
   requestType: 'new_purchase' | 'renewal',
   budgetedAmount: number
@@ -135,8 +136,18 @@ export function ReviewStep({ formData }: StepProps) {
     formData.budgetedAmount || 0
   );
 
+  // Check for AI/ML and portfolio flags
+  const hasAiMlFlags = formData.hasAiMlCapabilities || formData.hasLlmApiAccess || formData.usesMlForAnalysis;
+  const hasPortfolioFlags = formData.hasPortfolioCompanyAccess || formData.integratesWithPortfolioNetworks || formData.usedByPortfolioStaff;
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Risk Assessment Panel */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Risk Assessment & Routing</h2>
+        <RiskAssessmentPanel formData={formData} />
+      </div>
+
       {/* Request Summary */}
       <div className="rounded-xl border bg-card p-6">
         <h2 className="text-lg font-semibold mb-4">Review Your Request</h2>
@@ -146,6 +157,10 @@ export function ReviewStep({ formData }: StepProps) {
             <div>
               <span className="text-muted-foreground">Title</span>
               <p className="font-medium">{formData.title || "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Vendor</span>
+              <p className="font-medium">{formData.vendorName || "—"}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Request Type</span>
@@ -161,6 +176,12 @@ export function ReviewStep({ formData }: StepProps) {
               <span className="text-muted-foreground">Budgeted Amount</span>
               <p className="font-medium">
                 {formData.budgetedAmount ? formatCurrency(formData.budgetedAmount) : "—"}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Contract Term</span>
+              <p className="font-medium capitalize">
+                {formData.contractTerm.replace('_', ' ')}
               </p>
             </div>
             <div>
@@ -190,6 +211,32 @@ export function ReviewStep({ formData }: StepProps) {
               <p className="font-medium capitalize">{formData.urgency}</p>
             </div>
           </div>
+
+          {/* Risk Flags Summary */}
+          {(hasAiMlFlags || hasPortfolioFlags) && (
+            <div className="pt-4 border-t space-y-2">
+              {hasAiMlFlags && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Bot className="w-4 h-4 text-status-warning" />
+                  <span>AI/ML capabilities detected - CIO review required</span>
+                </div>
+              )}
+              {hasPortfolioFlags && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Building2 className="w-4 h-4 text-status-warning" />
+                  <span>Portfolio company access - CIO review required</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Renewal Use Case Change */}
+          {formData.requestType === 'renewal' && formData.useCaseChanged && (
+            <div className="pt-4 border-t">
+              <span className="text-sm text-muted-foreground">Use Case Changes</span>
+              <p className="text-sm mt-1">{formData.useCaseChangeDescription || "Changes noted but not described"}</p>
+            </div>
+          )}
 
           {/* Uploaded Files */}
           {formData.uploadedFiles.length > 0 && (
@@ -230,9 +277,9 @@ export function ReviewStep({ formData }: StepProps) {
       {/* Approval Workflow Diagram */}
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold">Approval Workflow</h3>
+          <h3 className="font-semibold">Approval Workflow Diagram</h3>
           <p className="text-sm text-muted-foreground">
-            Based on your request type and amount, this request will follow this workflow. Click any step for details.
+            Visual representation of the approval flow. Click any step for details.
           </p>
         </div>
 
@@ -256,13 +303,26 @@ export function ReviewStep({ formData }: StepProps) {
         )}
 
         {/* Renewal notice */}
-        {formData.requestType === 'renewal' && (
+        {formData.requestType === 'renewal' && !formData.useCaseChanged && (
           <div className="p-3 rounded-lg bg-status-info-bg border border-status-info/20 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-status-info mt-0.5" />
             <div className="text-sm">
-              <p className="font-medium text-status-info">Contract Renewal</p>
+              <p className="font-medium text-status-info">Contract Renewal - Streamlined Review</p>
               <p className="text-muted-foreground">
-                Renewals skip the Compliance & IT review step since the vendor was previously approved.
+                Renewals with no use case changes skip the Compliance & IT review steps.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Renewal with changes notice */}
+        {formData.requestType === 'renewal' && formData.useCaseChanged && (
+          <div className="p-3 rounded-lg bg-status-warning-bg border border-status-warning/20 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-status-warning mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-status-warning">Contract Renewal - Use Case Changed</p>
+              <p className="text-muted-foreground">
+                IT review required due to changed use case or enabled features.
               </p>
             </div>
           </div>

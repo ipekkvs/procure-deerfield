@@ -21,15 +21,24 @@ import {
   Department,
   SubDepartment
 } from "@/lib/mockData";
-import { Sparkles, AlertCircle } from "lucide-react";
+import { detectKeywords, isPreApprovedVendor, ContractTerm } from "@/lib/riskScoring";
+import { Sparkles, AlertCircle, AlertTriangle, Bot, Building2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function IntakeStep({ formData, updateFormData }: StepProps) {
   const [detectedCategory, setDetectedCategory] = useState<RequestCategory | null>(null);
+  const [keywordAlerts, setKeywordAlerts] = useState<{
+    aiMl: boolean;
+    portfolio: boolean;
+    preApproved: boolean;
+  }>({ aiMl: false, portfolio: false, preApproved: false });
 
-  // Auto-detect category based on keywords
-  const detectCategory = (text: string) => {
+  // Auto-detect category and keywords based on description and vendor name
+  useEffect(() => {
+    const text = `${formData.description} ${formData.vendorName}`;
     const lower = text.toLowerCase();
+    
+    // Category detection
     if (lower.match(/software|saas|subscription|license|app|platform|tool|slack|zoom|salesforce|hubspot|notion/)) {
       setDetectedCategory('saas');
     } else if (lower.match(/laptop|computer|macbook|monitor|keyboard|mouse|hardware|device|phone|ipad/)) {
@@ -39,11 +48,25 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
     } else {
       setDetectedCategory(null);
     }
-  };
-
-  useEffect(() => {
-    detectCategory(formData.description);
-  }, [formData.description]);
+    
+    // Keyword detection for risk factors
+    const detection = detectKeywords(text);
+    const isPreApproved = isPreApprovedVendor(formData.vendorName);
+    
+    setKeywordAlerts({
+      aiMl: detection.aiMlDetected,
+      portfolio: detection.portfolioAccessDetected,
+      preApproved: isPreApproved,
+    });
+    
+    // Auto-check boxes if keywords detected
+    if (detection.aiMlDetected && !formData.hasAiMlCapabilities) {
+      updateFormData({ hasAiMlCapabilities: true });
+    }
+    if (detection.portfolioAccessDetected && !formData.hasPortfolioCompanyAccess) {
+      updateFormData({ hasPortfolioCompanyAccess: true });
+    }
+  }, [formData.description, formData.vendorName]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -67,6 +90,32 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
             <Label htmlFor="renewal" className="cursor-pointer">Contract Renewal</Label>
           </div>
         </RadioGroup>
+      </div>
+
+      {/* Vendor Name (for pre-approved detection) */}
+      <div className="rounded-xl border bg-card p-6">
+        <Label htmlFor="vendorName" className="text-base font-semibold">
+          Vendor / Product Name
+        </Label>
+        <p className="text-sm text-muted-foreground mt-1 mb-4">
+          Enter the vendor or product name to check pre-approval status
+        </p>
+        <Input
+          id="vendorName"
+          placeholder="e.g., Salesforce, Microsoft, OpenAI..."
+          value={formData.vendorName}
+          onChange={(e) => updateFormData({ vendorName: e.target.value })}
+          className="text-base"
+        />
+        
+        {keywordAlerts.preApproved && formData.vendorName && (
+          <div className="mt-4 p-3 rounded-lg bg-status-success-bg border border-status-success/20 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-status-success" />
+            <span className="text-sm">
+              <strong>{formData.vendorName}</strong> is a pre-approved vendor - streamlined review available
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Description */}
@@ -95,6 +144,35 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
         )}
       </div>
 
+      {/* Auto-detection Alerts */}
+      {(keywordAlerts.aiMl || keywordAlerts.portfolio) && (
+        <div className="space-y-3">
+          {keywordAlerts.aiMl && (
+            <div className="p-4 rounded-lg bg-status-warning-bg border border-status-warning/30 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-status-warning mt-0.5" />
+              <div>
+                <p className="font-medium text-status-warning">⚠️ AI/ML Tool Detected</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  CIO review required for platform consistency. The AI/ML capability checkbox has been auto-selected.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {keywordAlerts.portfolio && (
+            <div className="p-4 rounded-lg bg-status-warning-bg border border-status-warning/30 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-status-warning mt-0.5" />
+              <div>
+                <p className="font-medium text-status-warning">⚠️ Portfolio Company Access Detected</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  CIO review required for reputational risk. The portfolio company access checkbox has been auto-selected.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Category */}
       <div className="rounded-xl border bg-card p-6">
         <Label className="text-base font-semibold">Category</Label>
@@ -108,6 +186,198 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
         />
       </div>
 
+      {/* AI/ML Detection Section */}
+      <div className="rounded-xl border bg-card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Bot className="w-5 h-5 text-primary" />
+          <Label className="text-base font-semibold">AI & Machine Learning</Label>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          CIO reviews all AI/ML tools to ensure platform consistency
+        </p>
+        
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="hasAiMlCapabilities"
+              checked={formData.hasAiMlCapabilities}
+              onCheckedChange={(checked) => 
+                updateFormData({ hasAiMlCapabilities: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="hasAiMlCapabilities" className="cursor-pointer text-sm">
+              This tool uses or provides AI/ML capabilities
+            </Label>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="hasLlmApiAccess"
+              checked={formData.hasLlmApiAccess}
+              onCheckedChange={(checked) => 
+                updateFormData({ hasLlmApiAccess: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="hasLlmApiAccess" className="cursor-pointer text-sm">
+              This tool provides API access to LLM services (OpenAI, Anthropic, etc.)
+            </Label>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="usesMlForAnalysis"
+              checked={formData.usesMlForAnalysis}
+              onCheckedChange={(checked) => 
+                updateFormData({ usesMlForAnalysis: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="usesMlForAnalysis" className="cursor-pointer text-sm">
+              This tool uses machine learning for analysis or decisions
+            </Label>
+          </div>
+        </div>
+      </div>
+
+      {/* Portfolio Company Access Section */}
+      <div className="rounded-xl border bg-card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Building2 className="w-5 h-5 text-primary" />
+          <Label className="text-base font-semibold">Portfolio Company Integration</Label>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          CIO reviews portfolio integrations for reputational risk
+        </p>
+        
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="hasPortfolioCompanyAccess"
+              checked={formData.hasPortfolioCompanyAccess}
+              onCheckedChange={(checked) => 
+                updateFormData({ hasPortfolioCompanyAccess: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="hasPortfolioCompanyAccess" className="cursor-pointer text-sm">
+              This tool will have direct access to portfolio company systems
+            </Label>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="integratesWithPortfolioNetworks"
+              checked={formData.integratesWithPortfolioNetworks}
+              onCheckedChange={(checked) => 
+                updateFormData({ integratesWithPortfolioNetworks: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="integratesWithPortfolioNetworks" className="cursor-pointer text-sm">
+              This tool will integrate with portfolio company networks
+            </Label>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="usedByPortfolioStaff"
+              checked={formData.usedByPortfolioStaff}
+              onCheckedChange={(checked) => 
+                updateFormData({ usedByPortfolioStaff: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="usedByPortfolioStaff" className="cursor-pointer text-sm">
+              This tool will be used by portfolio company staff
+            </Label>
+          </div>
+        </div>
+      </div>
+
+      {/* Contract Term */}
+      <div className="rounded-xl border bg-card p-6">
+        <Label className="text-base font-semibold">Contract Term</Label>
+        <p className="text-sm text-muted-foreground mt-1 mb-4">
+          Multi-year commitments automatically trigger Finance review
+        </p>
+        <Select 
+          value={formData.contractTerm} 
+          onValueChange={(v) => updateFormData({ contractTerm: v as ContractTerm })}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select term" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1_year">1 year</SelectItem>
+            <SelectItem value="2_years">2 years</SelectItem>
+            <SelectItem value="3_years">3 years</SelectItem>
+            <SelectItem value="other">Other / Custom</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        {(formData.contractTerm === '2_years' || formData.contractTerm === '3_years' || formData.contractTerm === 'other') && (
+          <div className="mt-3 p-3 rounded-lg bg-status-info-bg border border-status-info/20 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-status-info" />
+            <span className="text-sm">
+              Multi-year commitment requires Finance approval regardless of amount
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Use Case Change (Renewals Only) */}
+      {formData.requestType === 'renewal' && (
+        <div className="rounded-xl border bg-card p-6 animate-fade-in">
+          <Label className="text-base font-semibold">Use Case Changes</Label>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            Has the use case or enabled features changed since last approval?
+          </p>
+          
+          <RadioGroup
+            value={formData.useCaseChanged ? "yes" : "no"}
+            onValueChange={(v) => updateFormData({ 
+              useCaseChanged: v === "yes",
+              useCaseChangeDescription: v === "no" ? "" : formData.useCaseChangeDescription
+            })}
+            className="space-y-3"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="no" id="use_case_no" />
+              <Label htmlFor="use_case_no" className="cursor-pointer">
+                No changes - Same use as before
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="yes" id="use_case_yes" />
+              <Label htmlFor="use_case_yes" className="cursor-pointer">
+                Yes, use case has changed
+              </Label>
+            </div>
+          </RadioGroup>
+          
+          {formData.useCaseChanged && (
+            <div className="mt-4 animate-fade-in">
+              <Label htmlFor="useCaseChangeDescription" className="text-sm">
+                Please describe what's changing:
+              </Label>
+              <Textarea
+                id="useCaseChangeDescription"
+                placeholder="Examples: Enabling AI features, new integrations, different data access..."
+                value={formData.useCaseChangeDescription}
+                onChange={(e) => updateFormData({ useCaseChangeDescription: e.target.value })}
+                className="mt-2 min-h-[80px]"
+              />
+              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Changed use cases require IT re-review even for pre-approved vendors
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Department */}
       <div className="rounded-xl border bg-card p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -117,7 +387,7 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
               value={formData.department || ""} 
               onValueChange={(v) => updateFormData({ 
                 department: v as Department,
-                subDepartment: null // Reset sub-department when department changes
+                subDepartment: null
               })}
             >
               <SelectTrigger className="mt-1.5">
@@ -133,7 +403,6 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
             </Select>
           </div>
           
-          {/* Sub-Department (only for Deerfield Intelligence) */}
           {formData.department === 'deerfield_intelligence' && (
             <div>
               <Label htmlFor="subDepartment">Sub-Department / Pod</Label>
@@ -157,7 +426,7 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
         </div>
       </div>
 
-      {/* SaaS-specific: Licenses/Seats - Show when category is SaaS OR detected as SaaS */}
+      {/* SaaS-specific: Licenses/Seats */}
       {(formData.category === 'saas' || detectedCategory === 'saas') && (
         <div className="rounded-xl border bg-card p-6 animate-fade-in">
           <Label htmlFor="licensesSeatsCount">Number of Licenses/Seats Required</Label>
