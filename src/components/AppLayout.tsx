@@ -28,6 +28,7 @@ import { preApprovedVendors } from "@/lib/riskScoring";
 import { NotificationsPopover } from "@/components/NotificationsPopover";
 import { HeaderSearchPopover } from "@/components/HeaderSearchPopover";
 import { ViewModeSwitcher } from "@/components/ViewModeSwitcher";
+import { useViewMode } from "@/contexts/ViewModeContext";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -108,14 +109,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const { refreshContext } = useViewMode();
   
   // Force re-render when role changes
   const handleRoleChange = useCallback(() => {
     forceUpdate({});
+    refreshContext(); // Update view mode context when role changes
     if (location.pathname !== '/') {
       navigate('/');
     }
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, refreshContext]);
   
   // Role-specific counts
   const approvalCount = useMemo(() => 
