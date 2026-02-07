@@ -33,11 +33,14 @@ import {
   TrendingDown,
   Users,
   RefreshCcw,
-  XCircle
+  XCircle,
+  CheckCircle2,
+  Eye,
+  Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'overbudget' | 'multiyear' | 'contracting';
+type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'finance-auto' | 'overbudget' | 'multiyear' | 'contracting';
 
 // Mock over-budget requests for demonstration
 const overBudgetRequests = [
@@ -64,6 +67,45 @@ const overBudgetRequests = [
     urgency: 'critical' as const,
     daysInQueue: 1,
     budgetSpentPercentage: 108,
+  },
+];
+
+// Mock auto-approved requests (Finance FYI only)
+const autoApprovedRequests: Array<{
+  id: string;
+  title: string;
+  requesterName: string;
+  department: 'investment' | '3dc' | 'deerfield_intelligence' | 'business_operations' | 'external_operations' | 'deerfield_foundation';
+  amount: number;
+  approvedAt: string;
+  jumpedIn: boolean;
+}> = [
+  {
+    id: 'AA-001',
+    title: 'Team Productivity App',
+    requesterName: 'Mike Wilson',
+    department: 'business_operations',
+    amount: 4500,
+    approvedAt: '2 hours ago',
+    jumpedIn: false,
+  },
+  {
+    id: 'AA-002',
+    title: 'Design Asset License',
+    requesterName: 'Sarah Chen',
+    department: 'deerfield_intelligence',
+    amount: 2800,
+    approvedAt: '1 day ago',
+    jumpedIn: false,
+  },
+  {
+    id: 'AA-003',
+    title: 'Cloud Storage Upgrade',
+    requesterName: 'Alex Johnson',
+    department: 'investment',
+    amount: 7200,
+    approvedAt: '3 days ago',
+    jumpedIn: false,
   },
 ];
 
@@ -156,6 +198,8 @@ const Approvals = () => {
         return pendingRequests.filter(r => 
           r.currentStep === 'finance_final_approval'
         );
+      case 'finance-auto':
+        return []; // Handled separately with autoApprovedRequests
       case 'overbudget':
         return []; // Handled separately with overBudgetRequests
       case 'multiyear':
@@ -213,13 +257,14 @@ const Approvals = () => {
     .filter(r => r.priceChanged && r.savingsAchieved)
     .reduce((sum, r) => sum + (r.savingsAchieved || 0), 0);
 
-  const viewTabs: { value: ApprovalView; label: string; icon: React.ElementType; count: number; highlight?: boolean }[] = [
+  const viewTabs: { value: ApprovalView; label: string; icon: React.ElementType; count: number; highlight?: boolean; badge?: string }[] = [
     { value: 'all', label: 'All', icon: Filter, count: pendingRequests.length },
     { value: 'department', label: 'Dept. Approval', icon: Building2, count: getRequestsForView('department').length },
     { value: 'compliance', label: 'Compliance', icon: Shield, count: getRequestsForView('compliance').length },
     { value: 'it', label: 'IT Review', icon: Monitor, count: getRequestsForView('it').length },
     { value: 'negotiation', label: 'Negotiation', icon: Briefcase, count: getRequestsForView('negotiation').length },
-    { value: 'finance', label: 'Finance', icon: DollarSign, count: getRequestsForView('finance').length },
+    { value: 'finance', label: 'Requires Approval', icon: DollarSign, count: getRequestsForView('finance').length + overBudgetRequests.length + multiYearRequests.length },
+    { value: 'finance-auto', label: 'Auto-Approved', icon: CheckCircle2, count: autoApprovedRequests.length, badge: 'FYI' },
     { value: 'overbudget', label: 'Over-Budget', icon: AlertTriangle, count: overBudgetRequests.length, highlight: true },
     { value: 'multiyear', label: 'Multi-Year', icon: RefreshCcw, count: multiYearRequests.length, highlight: multiYearRequests.some(r => r.isLowAnnual) },
     { value: 'contracting', label: 'Contracting', icon: FileText, count: getRequestsForView('contracting').length },
@@ -297,9 +342,16 @@ const Approvals = () => {
                   "ml-1 px-1.5 py-0.5 text-xs rounded-full",
                   tab.highlight && tab.count > 0 
                     ? "bg-status-error/20 text-status-error" 
+                    : tab.badge === 'FYI'
+                    ? "bg-status-success/20 text-status-success"
                     : "bg-muted"
                 )}>
                   {tab.count}
+                </span>
+              )}
+              {tab.badge && (
+                <span className="text-[10px] px-1 py-0.5 rounded bg-status-success/20 text-status-success uppercase font-medium">
+                  {tab.badge}
                 </span>
               )}
             </TabsTrigger>
@@ -555,6 +607,106 @@ const Approvals = () => {
                 </div>
               )}
             </div>
+          ) : currentView === 'finance-auto' ? (
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg bg-status-success-bg border border-status-success/30 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-status-success mt-0.5" />
+                <div>
+                  <p className="font-semibold text-status-success">✅ Auto-Approved This Week (FYI Only)</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    These requests met auto-approval criteria (&lt;$10K, within budget, single-year). 
+                    No action needed, but you can "Jump In" to add review if concerned.
+                  </p>
+                </div>
+              </div>
+
+              {autoApprovedRequests.length > 0 ? (
+                <div className="space-y-4">
+                  {autoApprovedRequests.map((request) => (
+                    <div key={request.id} className="rounded-xl border border-status-success/30 bg-card overflow-hidden">
+                      {/* Header */}
+                      <div className="p-4 bg-status-success-bg/50 border-b border-status-success/20">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-status-success" />
+                              <span className="text-xs font-medium text-status-success uppercase">Auto-Approved</span>
+                              <span className="text-xs text-muted-foreground">
+                                {request.approvedAt}
+                              </span>
+                            </div>
+                            <h3 className="text-lg font-semibold mt-1">{request.title}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Requested by {request.requesterName}
+                            </p>
+                          </div>
+                          <span className="text-lg font-bold text-status-success">
+                            {formatCurrency(request.amount)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Department</span>
+                            <p className="font-medium">{getDepartmentLabel(request.department)}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Amount</span>
+                            <p className="font-semibold">{formatCurrency(request.amount)}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Status</span>
+                            <p className="text-sm text-status-success font-medium">Within budget, &lt;$10K</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Term</span>
+                            <p className="font-medium">Single-year</p>
+                          </div>
+                        </div>
+
+                        {/* Auto-approval criteria */}
+                        <div className="p-3 rounded-lg bg-status-success/5 border border-status-success/20 text-sm">
+                          <p className="font-medium text-status-success mb-2">Auto-Approval Criteria Met:</p>
+                          <div className="grid grid-cols-3 gap-2 text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />
+                              <span>&lt;$10K</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />
+                              <span>Within budget</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />
+                              <span>Single-year</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-3 pt-2">
+                          <Button variant="outline" className="gap-2">
+                            <Eye className="w-4 h-4" />
+                            View Details
+                          </Button>
+                          <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/10">
+                            <Plus className="w-4 h-4" />
+                            Add Finance Review
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No auto-approved requests this week
+                </div>
+              )}
+            </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Request list */}
@@ -690,6 +842,28 @@ const Approvals = () => {
                               • {multiYearRequests.filter(r => r.isLowAnnual).length} with annual &lt;$10K
                             </span>
                           )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Auto-Approved This Week */}
+                {autoApprovedRequests.length > 0 && (
+                  <div 
+                    className="rounded-xl border border-status-success/30 bg-status-success-bg p-4 cursor-pointer hover:bg-status-success/10 transition-colors"
+                    onClick={() => setCurrentView('finance-auto')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-status-success/20">
+                        <CheckCircle2 className="w-5 h-5 text-status-success" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-status-success">
+                          ✅ {autoApprovedRequests.length} Auto-Approved
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Total: {formatCurrency(autoApprovedRequests.reduce((sum, r) => sum + r.amount, 0))} this week
                         </p>
                       </div>
                     </div>

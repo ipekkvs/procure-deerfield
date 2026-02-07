@@ -1,13 +1,16 @@
+import { useMemo } from "react";
 import { StepProps } from "./types";
 import { 
   formatCurrency, 
   getDepartmentLabel, 
   getSubDepartmentLabel,
-  departmentBudgets
+  departmentBudgets,
+  getDepartmentBudget
 } from "@/lib/mockData";
 import { CheckCircle2, DollarSign, AlertCircle, Paperclip, Bot, Building2 } from "lucide-react";
 import { ApprovalWorkflowDiagram, WorkflowNode, WorkflowStep, ParallelSteps } from "@/components/ApprovalWorkflowDiagram";
 import { RiskAssessmentPanel } from "./RiskAssessmentPanel";
+import { FinanceApprovalNotice } from "./FinanceApprovalNotice";
 import { calculateRiskAssessment } from "@/lib/riskScoring";
 function buildWorkflowNodes(
   requestType: 'new_purchase' | 'renewal',
@@ -140,8 +143,52 @@ export function ReviewStep({ formData }: StepProps) {
   const hasAiMlFlags = formData.hasAiMlCapabilities || formData.hasLlmApiAccess || formData.usesMlForAnalysis;
   const hasPortfolioFlags = formData.hasPortfolioCompanyAccess || formData.integratesWithPortfolioNetworks || formData.usedByPortfolioStaff;
 
+  // Calculate risk assessment for finance notice
+  const assessment = useMemo(() => {
+    const budget = getDepartmentBudget(formData.department || 'investment');
+    
+    return calculateRiskAssessment({
+      amount: formData.budgetedAmount || 0,
+      requestType: formData.requestType,
+      riskFactors: {
+        hasAiMlCapabilities: formData.hasAiMlCapabilities,
+        hasLlmApiAccess: formData.hasLlmApiAccess,
+        usesMlForAnalysis: formData.usesMlForAnalysis,
+        hasPortfolioCompanyAccess: formData.hasPortfolioCompanyAccess,
+        integratesWithPortfolioNetworks: formData.integratesWithPortfolioNetworks,
+        usedByPortfolioStaff: formData.usedByPortfolioStaff,
+        contractTerm: formData.contractTerm,
+        useCaseChanged: formData.useCaseChanged,
+        useCaseChangeDescription: formData.useCaseChangeDescription,
+        vendorName: formData.vendorName,
+      },
+      department: formData.department,
+      departmentBudgetRemaining: budget?.remaining || 100000,
+      description: formData.description,
+      vendorName: formData.vendorName,
+    });
+  }, [formData]);
+
+  const departmentBudget = formData.department 
+    ? getDepartmentBudget(formData.department) 
+    : null;
+  const isOverBudget = departmentBudget && formData.budgetedAmount
+    ? formData.budgetedAmount > departmentBudget.remaining
+    : false;
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Finance Approval Notice */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Finance Approval Status</h2>
+        <FinanceApprovalNotice 
+          assessment={assessment}
+          amount={formData.budgetedAmount || 0}
+          contractTerm={formData.contractTerm}
+          isOverBudget={isOverBudget}
+        />
+      </div>
+
       {/* Risk Assessment Panel */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Risk Assessment & Routing</h2>
