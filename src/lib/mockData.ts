@@ -181,6 +181,14 @@ export interface Renewal {
   daysUntilExpiration: number;
   alertSent: boolean;
   currentLicenses?: number;
+  // Role-based access fields
+  ownerId: string;
+  department: Department;
+  requiresCompliance: boolean;
+  requiresIt: boolean;
+  hasPhi: boolean;
+  hasInvestmentData: boolean;
+  hasIntegration: boolean;
 }
 
 // ============= WORKFLOW TYPES =============
@@ -916,6 +924,13 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: -5,
     alertSent: true,
     currentLicenses: 25,
+    ownerId: '1',
+    department: 'business_operations',
+    requiresCompliance: false,
+    requiresIt: true,
+    hasPhi: false,
+    hasInvestmentData: false,
+    hasIntegration: true,
   },
   {
     id: 'REN-002',
@@ -932,6 +947,13 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: 10,
     alertSent: true,
     currentLicenses: 90,
+    ownerId: '1',
+    department: 'business_operations',
+    requiresCompliance: true,
+    requiresIt: true,
+    hasPhi: false,
+    hasInvestmentData: true,
+    hasIntegration: true,
   },
   {
     id: 'REN-003',
@@ -948,6 +970,13 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: 345,
     alertSent: false,
     currentLicenses: 5,
+    ownerId: '4',
+    department: 'deerfield_intelligence',
+    requiresCompliance: false,
+    requiresIt: false,
+    hasPhi: false,
+    hasInvestmentData: false,
+    hasIntegration: false,
   },
   {
     id: 'REN-004',
@@ -964,6 +993,13 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: 72,
     alertSent: true,
     currentLicenses: 15,
+    ownerId: '1',
+    department: 'business_operations',
+    requiresCompliance: false,
+    requiresIt: true,
+    hasPhi: false,
+    hasInvestmentData: false,
+    hasIntegration: true,
   },
   {
     id: 'REN-005',
@@ -980,6 +1016,13 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: 330,
     alertSent: false,
     currentLicenses: 150,
+    ownerId: '4',
+    department: 'deerfield_intelligence',
+    requiresCompliance: false,
+    requiresIt: true,
+    hasPhi: false,
+    hasInvestmentData: false,
+    hasIntegration: true,
   },
   {
     id: 'REN-006',
@@ -996,6 +1039,13 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: 335,
     alertSent: false,
     currentLicenses: 10,
+    ownerId: '7',
+    department: 'investment',
+    requiresCompliance: true,
+    requiresIt: false,
+    hasPhi: false,
+    hasInvestmentData: true,
+    hasIntegration: false,
   },
   {
     id: 'REN-007',
@@ -1012,6 +1062,36 @@ export const renewals: Renewal[] = [
     daysUntilExpiration: 195,
     alertSent: false,
     currentLicenses: 200,
+    ownerId: '4',
+    department: 'deerfield_intelligence',
+    requiresCompliance: true,
+    requiresIt: true,
+    hasPhi: true,
+    hasInvestmentData: false,
+    hasIntegration: true,
+  },
+  {
+    id: 'REN-008',
+    vendorId: 'VEN-011',
+    vendorName: 'Epic Systems',
+    renewalDate: '2024-06-15',
+    reviewStatus: 'pending',
+    usageRate: 85,
+    recommendation: null,
+    amount: 250000,
+    createdBy: '7',
+    reviewedBy: null,
+    reviewedAt: null,
+    daysUntilExpiration: 120,
+    alertSent: true,
+    currentLicenses: 50,
+    ownerId: '7',
+    department: 'investment',
+    requiresCompliance: true,
+    requiresIt: true,
+    hasPhi: true,
+    hasInvestmentData: true,
+    hasIntegration: true,
   },
 ];
 

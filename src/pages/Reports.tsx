@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/mockData";
 import { StatsCard } from "@/components/StatsCard";
 import { 
   formatCurrency 
@@ -20,7 +21,6 @@ import {
   AlertTriangle,
   BarChart3,
   PieChart,
-  Users,
   Building2,
   RefreshCw,
   CheckCircle2,
@@ -30,8 +30,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { 
+  NoReportsAccess, 
+  ManagerReports, 
+  ComplianceReports, 
+  ITReports 
+} from "@/components/reports";
 
-const Reports = () => {
+// Full reports for Finance, CIO, and Director of Operations
+function FullReports() {
   const summary = getProcurementSummary();
   const cycleTime = getCycleTimeByTier();
   const bottlenecks = getApprovalBottlenecks();
@@ -41,12 +48,23 @@ const Reports = () => {
   const typeBreakdown = getRequestTypeBreakdown();
   const vendorUsage = getPreApprovedVendorUsage();
   const renewalCompliance = getRenewalCompliance();
+  const currentUser = getCurrentUser();
+  
+  // Customize title based on role
+  const getTitle = () => {
+    switch (currentUser.role) {
+      case 'cio': return 'Strategic Reports';
+      case 'director_operations': return 'Operational Reports';
+      case 'finance': return 'Financial Reports';
+      default: return 'Analytics & Reports';
+    }
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Analytics & Reports</h1>
+        <h1 className="text-3xl font-bold">{getTitle()}</h1>
         <p className="text-muted-foreground mt-1">
           Procurement performance metrics and insights
         </p>
@@ -417,6 +435,29 @@ const Reports = () => {
       </Tabs>
     </div>
   );
+}
+
+const Reports = () => {
+  const currentUser = getCurrentUser();
+  
+  // Role-based access control
+  switch (currentUser.role) {
+    case 'requester':
+      return <NoReportsAccess />;
+    case 'department_leader':
+      return <ManagerReports />;
+    case 'compliance':
+      return <ComplianceReports />;
+    case 'it':
+      return <ITReports />;
+    case 'finance':
+    case 'cio':
+    case 'director_operations':
+    case 'admin':
+      return <FullReports />;
+    default:
+      return <NoReportsAccess />;
+  }
 };
 
 export default Reports;
