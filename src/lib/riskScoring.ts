@@ -69,6 +69,8 @@ export interface RiskAssessment {
   aiMlDetected: boolean;
   portfolioAccessDetected: boolean;
   isPreApprovedVendor: boolean;
+  isOverBudget: boolean;
+  overBudgetAmount: number;
   
   // Routing explanation
   routingReasons: string[];
@@ -458,6 +460,8 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
     aiMlDetected: hasAnyAiMl,
     portfolioAccessDetected: hasAnyPortfolioAccess,
     isPreApprovedVendor: isPreApproved,
+    isOverBudget,
+    overBudgetAmount: isOverBudget ? amount - departmentBudgetRemaining : 0,
     routingReasons,
     approvalPath,
   };

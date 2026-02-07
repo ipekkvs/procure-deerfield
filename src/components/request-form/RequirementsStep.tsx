@@ -1,6 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StepProps } from "./types";
 import { FileUpload } from "./FileUpload";
@@ -11,7 +12,8 @@ import {
   getDepartmentLabel
 } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
-import { Calendar, DollarSign, Info } from "lucide-react";
+import { Calendar, DollarSign, Info, AlertTriangle, TrendingDown } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const urgencyOptions: { value: Urgency; label: string; description: string }[] = [
   { value: 'low', label: 'Low', description: 'No rush - 30 days' },
@@ -28,6 +30,12 @@ export function RequirementsStep({ formData, updateFormData }: StepProps) {
   const budgetAfterPurchase = departmentBudget && formData.budgetedAmount
     ? departmentBudget.remaining - formData.budgetedAmount
     : null;
+  
+  const isOverBudget = budgetAfterPurchase !== null && budgetAfterPurchase < 0;
+  const shortfall = isOverBudget ? Math.abs(budgetAfterPurchase) : 0;
+  const spentPercentage = departmentBudget 
+    ? Math.round((departmentBudget.spentToDate / departmentBudget.totalBudget) * 100)
+    : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -92,47 +100,172 @@ export function RequirementsStep({ formData, updateFormData }: StepProps) {
               onChange={(e) => updateFormData({ 
                 budgetedAmount: e.target.value ? parseFloat(e.target.value) : null 
               })}
+              className={cn(isOverBudget && "border-status-error focus-visible:ring-status-error")}
             />
           </div>
         </div>
 
-        {/* Budget Impact Display */}
+        {/* Enhanced Budget Impact Display */}
         {departmentBudget && formData.department && (
-          <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+          <div className={cn(
+            "p-4 rounded-lg space-y-4",
+            isOverBudget ? "bg-status-error-bg border border-status-error/30" : "bg-muted/50"
+          )}>
             <div className="flex items-center gap-2 text-sm font-medium">
-              <Info className="w-4 h-4 text-primary" />
-              {getDepartmentLabel(formData.department)} Budget Impact
+              {isOverBudget ? (
+                <AlertTriangle className="w-4 h-4 text-status-error" />
+              ) : (
+                <Info className="w-4 h-4 text-primary" />
+              )}
+              {getDepartmentLabel(formData.department)} Budget
             </div>
+            
+            {/* Budget Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span>Budget Utilization</span>
+                <span className={cn(
+                  "font-medium",
+                  spentPercentage > 90 ? "text-status-error" :
+                  spentPercentage > 70 ? "text-status-warning" : "text-status-success"
+                )}>
+                  {spentPercentage}% spent
+                </span>
+              </div>
+              <Progress 
+                value={spentPercentage} 
+                className={cn(
+                  "h-2",
+                  spentPercentage > 90 ? "[&>div]:bg-status-error" :
+                  spentPercentage > 70 ? "[&>div]:bg-status-warning" : "[&>div]:bg-status-success"
+                )}
+              />
+            </div>
+            
+            {/* Budget Details Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Total Budget</span>
+                <span className="text-muted-foreground">Annual Budget</span>
                 <p className="font-semibold">{formatCurrency(departmentBudget.totalBudget)}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Spent to Date</span>
-                <p className="font-semibold">{formatCurrency(departmentBudget.spentToDate)}</p>
+                <p className="font-semibold">{formatCurrency(departmentBudget.spentToDate)} ({spentPercentage}%)</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Remaining</span>
                 <p className="font-semibold text-status-success">{formatCurrency(departmentBudget.remaining)}</p>
               </div>
-              {formData.budgetedAmount && budgetAfterPurchase !== null && (
+              {formData.budgetedAmount && (
                 <div>
-                  <span className="text-muted-foreground">After Purchase</span>
-                  <p className={cn(
-                    "font-semibold",
-                    budgetAfterPurchase < 0 ? "text-destructive" : 
+                  <span className="text-muted-foreground">This Request</span>
+                  <p className="font-semibold">{formatCurrency(formData.budgetedAmount)}</p>
+                </div>
+              )}
+            </div>
+            
+            {/* After Approval Calculation */}
+            {formData.budgetedAmount && budgetAfterPurchase !== null && (
+              <div className={cn(
+                "pt-4 border-t",
+                isOverBudget ? "border-status-error/30" : "border-border"
+              )}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">After Approval:</span>
+                  <span className={cn(
+                    "text-lg font-bold",
+                    isOverBudget ? "text-status-error" : 
                     budgetAfterPurchase < departmentBudget.totalBudget * 0.1 ? "text-status-warning" :
                     "text-status-success"
                   )}>
                     {formatCurrency(budgetAfterPurchase)}
-                  </p>
+                  </span>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Over-Budget Warning */}
+        {isOverBudget && (
+          <div className="p-4 rounded-lg bg-status-error-bg border border-status-error/30 space-y-3 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <TrendingDown className="w-5 h-5 text-status-error mt-0.5" />
+              <div>
+                <p className="font-semibold text-status-error">
+                  ⚠️ OVER BUDGET BY {formatCurrency(shortfall)}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This request exceeds your remaining budget by <strong>{formatCurrency(shortfall)}</strong>.
+                  You can still submit this request, but it will require Finance exception approval.
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-sm text-muted-foreground bg-background/50 rounded-lg p-3 space-y-1">
+              <p className="font-medium text-foreground">Finance will review this with your Department Head to discuss:</p>
+              <ul className="list-disc list-inside space-y-0.5 ml-2">
+                <li>Why this purchase is critical now</li>
+                <li>Where budget can be reallocated from</li>
+                <li>Whether this can be deferred to next quarter</li>
+              </ul>
             </div>
           </div>
         )}
       </div>
+      
+      {/* Over-Budget Justification (Required when over budget) */}
+      {isOverBudget && (
+        <div className="rounded-xl border border-status-error/30 bg-card p-6 animate-fade-in">
+          <Label htmlFor="overBudgetJustification" className="text-base font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-status-error" />
+            Additional Budget Justification
+            <span className="text-status-error">*</span>
+          </Label>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            Explain why this purchase cannot wait or be funded differently (minimum 100 characters)
+          </p>
+          <Textarea
+            id="overBudgetJustification"
+            placeholder="Example: Critical for Q4 reporting cycle. Budget overrun due to unexpected compliance tools earlier this quarter. Recommend reallocating from Q1 marketing budget."
+            value={formData.overBudgetJustification}
+            onChange={(e) => updateFormData({ overBudgetJustification: e.target.value })}
+            className={cn(
+              "min-h-[120px]",
+              formData.overBudgetJustification.length > 0 && formData.overBudgetJustification.length < 100 
+                ? "border-status-warning" 
+                : ""
+            )}
+          />
+          <div className="flex justify-between mt-2 text-xs">
+            <span className={cn(
+              formData.overBudgetJustification.length < 100 
+                ? "text-status-warning" 
+                : "text-status-success"
+            )}>
+              {formData.overBudgetJustification.length}/100 characters minimum
+            </span>
+            {formData.overBudgetJustification.length >= 100 && (
+              <span className="text-status-success">✓ Requirement met</span>
+            )}
+          </div>
+          
+          {/* Acknowledgment Checkbox */}
+          <div className="mt-6 flex items-start gap-3">
+            <Checkbox
+              id="acknowledgesFinanceException"
+              checked={formData.acknowledgesFinanceException}
+              onCheckedChange={(checked) => 
+                updateFormData({ acknowledgesFinanceException: checked === true })
+              }
+              className="mt-1"
+            />
+            <Label htmlFor="acknowledgesFinanceException" className="cursor-pointer text-sm">
+              I understand this request exceeds my department budget and requires Finance exception approval
+            </Label>
+          </div>
+        </div>
+      )}
 
       {/* Urgency */}
       <div className="rounded-xl border bg-card p-6">

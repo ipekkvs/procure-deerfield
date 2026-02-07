@@ -46,6 +46,10 @@ export interface RequestFormData {
   budgetedAmount: number | null;
   urgency: Urgency;
   businessJustification: string;
+  
+  // Over-budget handling
+  overBudgetJustification: string;
+  acknowledgesFinanceException: boolean;
 }
 
 export const initialFormData: RequestFormData = {
@@ -84,6 +88,10 @@ export const initialFormData: RequestFormData = {
   budgetedAmount: null,
   urgency: "medium",
   businessJustification: "",
+  
+  // Over-budget handling
+  overBudgetJustification: "",
+  acknowledgesFinanceException: false,
 };
 
 export interface StepProps {

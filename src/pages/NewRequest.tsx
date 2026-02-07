@@ -6,6 +6,7 @@ import { IntakeStep } from "@/components/request-form/IntakeStep";
 import { RequirementsStep } from "@/components/request-form/RequirementsStep";
 import { ReviewStep } from "@/components/request-form/ReviewStep";
 import { RequestFormData, initialFormData } from "@/components/request-form/types";
+import { getDepartmentBudget } from "@/lib/mockData";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,13 +33,27 @@ const NewRequest = () => {
     formData.department !== null &&
     formData.redundancyCheckConfirmed;
 
+  // Check if over budget for Step 2 validation
+  const departmentBudget = formData.department 
+    ? getDepartmentBudget(formData.department) 
+    : null;
+  const budgetAfterPurchase = departmentBudget && formData.budgetedAmount
+    ? departmentBudget.remaining - formData.budgetedAmount
+    : null;
+  const isOverBudget = budgetAfterPurchase !== null && budgetAfterPurchase < 0;
+
   // Validation for Step 2
   const canProceedStep2 = 
     formData.title.trim() !== "" && 
     formData.budgetedAmount !== null && 
     formData.budgetedAmount > 0 &&
     formData.targetSignDate !== "" &&
-    formData.businessJustification.trim() !== "";
+    formData.businessJustification.trim() !== "" &&
+    // If over budget, require additional justification and acknowledgment
+    (!isOverBudget || (
+      formData.overBudgetJustification.length >= 100 &&
+      formData.acknowledgesFinanceException
+    ));
 
   const handleSubmit = () => {
     toast({
