@@ -224,7 +224,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         {/* User section */}
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border space-y-3">
+          {/* View Mode Switcher */}
+          <ViewModeSwitcher collapsed={collapsed} />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -245,11 +248,11 @@ export function AppLayout({ children }: AppLayoutProps) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
               </DropdownMenuItem>
@@ -275,7 +278,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
           
           <div className="flex items-center gap-3">
-            <ViewModeSwitcher />
             <RoleSwitcher onRoleChange={handleRoleChange} />
             <NotificationsPopover />
           </div>
