@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { requests, renewals, getCurrentUser } from "@/lib/mockData";
+import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -41,8 +42,19 @@ const navigation = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [, forceUpdate] = useState({});
   const location = useLocation();
+  const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  
+  // Force re-render when role changes
+  const handleRoleChange = useCallback(() => {
+    forceUpdate({});
+    // Navigate to dashboard to show role-specific view
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
+  }, [navigate, location.pathname]);
   
   // Count pending approvals
   const pendingApprovals = requests.filter(r => r.status === 'pending').length;
@@ -173,7 +185,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <RoleSwitcher onRoleChange={handleRoleChange} />
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5" />
               {notifications > 0 && (
