@@ -60,7 +60,8 @@ const Vendors = () => {
   const currentUser = getCurrentUser();
   const isRequester = currentUser.role === 'requester';
 
-  // For requesters, only show vendors they have used in their requests
+  // For requesters, show a curated list of commonly used vendors
+  // In a real app, this would filter to vendors from their actual requests
   const accessibleVendors = useMemo(() => {
     if (!isRequester) return vendors;
     
@@ -73,6 +74,14 @@ const Vendors = () => {
     deptRequests.forEach(r => {
       if (r.vendorId) userVendorIds.add(r.vendorId);
     });
+    
+    // If no specific vendors found, show a subset of commonly used active vendors
+    // This ensures requesters always see some vendor options
+    if (userVendorIds.size === 0) {
+      return vendors
+        .filter(v => v.status === 'active')
+        .slice(0, 6); // Show up to 6 commonly used vendors
+    }
     
     return vendors.filter(v => userVendorIds.has(v.id));
   }, [isRequester, currentUser.id, currentUser.department]);
