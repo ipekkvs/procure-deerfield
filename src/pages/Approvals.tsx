@@ -1,4 +1,5 @@
 import { getCurrentUser, requests } from "@/lib/mockData";
+import { useViewMode } from "@/contexts/ViewModeContext";
 import {
   RequesterApprovals,
   ManagerApprovals,
@@ -12,6 +13,12 @@ import { preApprovedVendors } from "@/lib/riskScoring";
 
 const Approvals = () => {
   const currentUser = getCurrentUser();
+  const { viewMode, canSwitchViews } = useViewMode();
+  
+  // If user can switch views and is in individual mode, show Requester view
+  if (canSwitchViews && viewMode === 'individual') {
+    return <RequesterApprovals user={currentUser} />;
+  }
   
   // Route to appropriate approvals view based on user role
   switch (currentUser.role) {

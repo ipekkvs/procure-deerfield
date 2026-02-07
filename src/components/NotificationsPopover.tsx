@@ -36,7 +36,7 @@ function generateNotifications(): Notification[] {
         title: 'Action Required',
         description: `${r.title} needs additional information`,
         timestamp: '2 hours ago',
-        link: `/request/${r.id}`,
+        link: `/requests/${r.id}`,
         read: false,
       });
     });

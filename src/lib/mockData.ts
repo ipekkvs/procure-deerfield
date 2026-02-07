@@ -237,8 +237,13 @@ export const departmentBudgets: DepartmentBudget[] = [
 ];
 
 // ============= DEMO USERS =============
+// Users can have a primary role but may also act as requesters when acquiring products/services
 export const users: User[] = [
-  { id: '1', email: 'requester@demo.com', name: 'Alex Johnson', role: 'requester', department: 'business_operations', isDepartmentLeader: false },
+  // Pure requesters (3 different requesters for demo)
+  { id: '1', email: 'requester1@demo.com', name: 'Alex Johnson', role: 'requester', department: 'business_operations', isDepartmentLeader: false },
+  { id: '9', email: 'requester2@demo.com', name: 'Jordan Smith', role: 'requester', department: 'investment', isDepartmentLeader: false },
+  { id: '10', email: 'requester3@demo.com', name: 'Casey Williams', role: 'requester', department: 'deerfield_intelligence', isDepartmentLeader: false },
+  // Leadership roles (can also act as requesters)
   { id: '2', email: 'finance@demo.com', name: 'Sarah Chen', role: 'finance', department: 'business_operations', isDepartmentLeader: false },
   { id: '3', email: 'ops@demo.com', name: 'Mike Wilson', role: 'director_operations', department: 'business_operations', isDepartmentLeader: false },
   { id: '4', email: 'it@demo.com', name: 'Emily Brown', role: 'it', department: 'deerfield_intelligence', isDepartmentLeader: false },
@@ -334,8 +339,8 @@ export const requests: PurchaseRequest[] = [
     status: 'pending',
     urgency: 'medium',
     businessJustification: 'Sales team growing 40% this year, need additional licenses and advanced analytics.',
-    requesterId: '1',
-    requesterName: 'Alex Johnson',
+    requesterId: '9',
+    requesterName: 'Jordan Smith',
     createdAt: '2024-01-10T14:00:00Z',
     updatedAt: '2024-01-15T09:00:00Z',
     originalAmount: 125000,
@@ -545,7 +550,7 @@ export const requests: PurchaseRequest[] = [
     description: 'Zoom Webinar for up to 500 attendees',
     requestType: 'renewal',
     category: 'saas',
-    department: 'external_operations',
+    department: 'deerfield_intelligence',
     licensesSeatsCount: 5,
     redundancyCheckConfirmed: true,
     targetSignDate: '2024-01-30',
@@ -553,8 +558,8 @@ export const requests: PurchaseRequest[] = [
     status: 'approved',
     urgency: 'high',
     businessJustification: 'Product launch webinar scheduled for next month.',
-    requesterId: '1',
-    requesterName: 'Alex Johnson',
+    requesterId: '10',
+    requesterName: 'Casey Williams',
     createdAt: '2024-01-11T08:00:00Z',
     updatedAt: '2024-01-12T10:00:00Z',
     originalAmount: 3200,

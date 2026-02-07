@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/mockData";
+import { useViewMode } from "@/contexts/ViewModeContext";
 import {
   RequesterSummary,
   ManagerSummary,
@@ -11,6 +12,12 @@ import {
 
 const Dashboard = () => {
   const currentUser = getCurrentUser();
+  const { viewMode, canSwitchViews } = useViewMode();
+  
+  // If user can switch views and is in individual mode, show Requester view
+  if (canSwitchViews && viewMode === 'individual') {
+    return <RequesterSummary userName={currentUser.name} user={currentUser} />;
+  }
   
   // Route to appropriate summary dashboard based on user role
   switch (currentUser.role) {
