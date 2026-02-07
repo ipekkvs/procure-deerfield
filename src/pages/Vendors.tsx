@@ -4,6 +4,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { 
   vendors, 
   requests,
+  contracts,
+  renewals,
   formatCurrency, 
   formatDate,
   Vendor,
@@ -33,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus,
   Building2,
@@ -43,7 +46,10 @@ import {
   DollarSign,
   LayoutGrid,
   List,
-  User
+  User,
+  FileText,
+  RefreshCw,
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/search-input";
@@ -273,7 +279,7 @@ const Vendors = () => {
 
       {/* Vendor Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -287,77 +293,10 @@ const Vendors = () => {
           </DialogHeader>
           
           {selectedVendor && (
-            <div className="space-y-6 py-4">
-              {/* Contact Info */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground">Contact Information</h4>
-                {selectedVendor.website && (
-                  <a 
-                    href={selectedVendor.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm hover:text-primary"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    {selectedVendor.website}
-                  </a>
-                )}
-                {selectedVendor.contactEmail && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    {selectedVendor.contactEmail}
-                  </div>
-                )}
-                {selectedVendor.contactPhone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    {selectedVendor.contactPhone}
-                  </div>
-                )}
-              </div>
-
-              {/* Contract Details */}
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground">Contract Details</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-muted-foreground">Start Date</p>
-                      <p className="font-medium">{formatDate(selectedVendor.contractStart)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-muted-foreground">End Date</p>
-                      <p className="font-medium">{formatDate(selectedVendor.contractEnd)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Spend - Hidden for requesters */}
-              {!isRequester && (
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-medium">Annual Spend</span>
-                    </div>
-                    <span className="text-2xl font-bold">{formatCurrency(selectedVendor.annualSpend)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Owner - Hidden for requesters */}
-              {!isRequester && (
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Owner: </span>
-                  <span className="font-medium">{selectedVendor.ownerName}</span>
-                </div>
-              )}
-            </div>
+            <VendorDetailContent 
+              vendor={selectedVendor} 
+              isRequester={isRequester} 
+            />
           )}
 
           <DialogFooter>
@@ -371,5 +310,254 @@ const Vendors = () => {
     </div>
   );
 };
+
+// Separate component for vendor detail content with related data
+function VendorDetailContent({ vendor, isRequester }: { vendor: Vendor; isRequester: boolean }) {
+  // Get related data for this vendor
+  const vendorContracts = useMemo(() => 
+    contracts.filter(c => c.vendorId === vendor.id),
+    [vendor.id]
+  );
+  
+  const vendorRenewals = useMemo(() => 
+    renewals.filter(r => r.vendorId === vendor.id),
+    [vendor.id]
+  );
+  
+  const vendorRequests = useMemo(() => 
+    requests.filter(r => r.vendorId === vendor.id),
+    [vendor.id]
+  );
+
+  return (
+    <Tabs defaultValue="overview" className="w-full">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+        <TabsTrigger value="contracts" className="text-xs gap-1">
+          <FileText className="w-3 h-3" />
+          Contracts ({vendorContracts.length})
+        </TabsTrigger>
+        <TabsTrigger value="renewals" className="text-xs gap-1">
+          <RefreshCw className="w-3 h-3" />
+          Renewals ({vendorRenewals.length})
+        </TabsTrigger>
+        <TabsTrigger value="requests" className="text-xs gap-1">
+          <ClipboardCheck className="w-3 h-3" />
+          Requests ({vendorRequests.length})
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview" className="space-y-4 mt-4">
+        {/* Contact Info */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-muted-foreground">Contact Information</h4>
+          {vendor.website && (
+            <a 
+              href={vendor.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm hover:text-primary"
+            >
+              <ExternalLink className="w-4 h-4" />
+              {vendor.website}
+            </a>
+          )}
+          {vendor.contactEmail && (
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="w-4 h-4 text-muted-foreground" />
+              {vendor.contactEmail}
+            </div>
+          )}
+          {vendor.contactPhone && (
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="w-4 h-4 text-muted-foreground" />
+              {vendor.contactPhone}
+            </div>
+          )}
+        </div>
+
+        {/* Contract Dates */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-muted-foreground">Contract Period</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">Start Date</p>
+                <p className="font-medium">{formatDate(vendor.contractStart)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-muted-foreground">End Date</p>
+                <p className="font-medium">{formatDate(vendor.contractEnd)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Spend - Hidden for requesters */}
+        {!isRequester && (
+          <div className="p-4 rounded-lg bg-muted/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-muted-foreground" />
+                <span className="font-medium">Annual Spend</span>
+              </div>
+              <span className="text-2xl font-bold">{formatCurrency(vendor.annualSpend)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Owner - Hidden for requesters */}
+        {!isRequester && (
+          <div className="text-sm">
+            <span className="text-muted-foreground">Owner: </span>
+            <span className="font-medium">{vendor.ownerName}</span>
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="contracts" className="mt-4">
+        {vendorContracts.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No contracts found for this vendor</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {vendorContracts.map(contract => {
+              // Determine if contract is active based on dates
+              const endDate = new Date(contract.contractEndDate);
+              const isActive = endDate > new Date();
+              
+              return (
+                <div key={contract.id} className="p-3 rounded-lg border bg-card">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm">{contract.id}</span>
+                    <StatusBadge 
+                      variant={isActive ? 'success' : 'neutral'}
+                      dot={false}
+                    >
+                      {isActive ? 'Active' : 'Expired'}
+                    </StatusBadge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    <div>
+                      <span className="block">Start: {formatDate(contract.contractStartDate)}</span>
+                    </div>
+                    <div>
+                      <span className="block">End: {formatDate(contract.contractEndDate)}</span>
+                    </div>
+                    {!isRequester && (
+                      <div className="col-span-2">
+                        <span className="font-medium text-foreground">
+                          {formatCurrency(contract.annualValue)}
+                        </span>
+                        <span className="text-muted-foreground"> annual value</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="renewals" className="mt-4">
+        {vendorRenewals.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <RefreshCw className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No upcoming renewals for this vendor</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {vendorRenewals.map(renewal => (
+              <div key={renewal.id} className="p-3 rounded-lg border bg-card">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm">{renewal.id}</span>
+                  <StatusBadge 
+                    variant={
+                      renewal.reviewStatus === 'completed' ? 'success' : 
+                      renewal.reviewStatus === 'in_review' ? 'warning' : 'neutral'
+                    }
+                    dot={false}
+                  >
+                    {renewal.reviewStatus.replace('_', ' ')}
+                  </StatusBadge>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="w-3 h-3" />
+                    <span>Renewal Date: {formatDate(renewal.renewalDate)}</span>
+                  </div>
+                  {!isRequester && (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-3 h-3 text-muted-foreground" />
+                      <span className="font-medium">{formatCurrency(renewal.amount)}</span>
+                      <span className="text-muted-foreground">renewal amount</span>
+                    </div>
+                  )}
+                  <div className="text-muted-foreground">
+                    {Math.round(renewal.usageRate * 100)}% usage rate
+                    {renewal.currentLicenses && ` • ${renewal.currentLicenses} licenses`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="requests" className="mt-4">
+        {vendorRequests.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No requests associated with this vendor</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {vendorRequests.map(request => (
+              <div key={request.id} className="p-3 rounded-lg border bg-card">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm truncate flex-1 mr-2">{request.title}</span>
+                  <StatusBadge 
+                    variant={
+                      request.status === 'approved' ? 'success' : 
+                      request.status === 'pending' ? 'warning' : 
+                      request.status === 'rejected' ? 'error' : 'neutral'
+                    }
+                    dot={false}
+                  >
+                    {request.status}
+                  </StatusBadge>
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3 h-3" />
+                    <span>{request.requesterName}</span>
+                    <span>•</span>
+                    <span>{request.department.replace('_', ' ')}</span>
+                  </div>
+                  {!isRequester && (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-3 h-3" />
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(request.budgetedAmount)}
+                      </span>
+                    </div>
+                  )}
+                  <div>Created: {formatDate(request.createdAt)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
+  );
+}
 
 export default Vendors;
