@@ -1,15 +1,20 @@
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "./StatusBadge";
-import { Vendor, formatCurrency, formatDate } from "@/lib/mockData";
+import { Vendor, formatCurrency, formatDate, getCurrentUser } from "@/lib/mockData";
 import { Building2, Calendar, DollarSign } from "lucide-react";
 
 interface VendorCardProps {
   vendor: Vendor;
   onClick?: () => void;
   className?: string;
+  showSpend?: boolean;
 }
 
-export function VendorCard({ vendor, onClick, className }: VendorCardProps) {
+export function VendorCard({ vendor, onClick, className, showSpend = true }: VendorCardProps) {
+  const currentUser = getCurrentUser();
+  const isRequester = currentUser.role === 'requester';
+  const canViewSpend = showSpend && !isRequester;
+
   const getStatusVariant = () => {
     switch (vendor.status) {
       case 'active': return 'success';
@@ -43,19 +48,28 @@ export function VendorCard({ vendor, onClick, className }: VendorCardProps) {
       </div>
       
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <DollarSign className="w-4 h-4" />
-          <span>{formatCurrency(vendor.annualSpend)}/yr</span>
-        </div>
+        {canViewSpend ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <DollarSign className="w-4 h-4" />
+            <span>{formatCurrency(vendor.annualSpend)}/yr</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Building2 className="w-4 h-4" />
+            <span>{vendor.category}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-muted-foreground">
           <Calendar className="w-4 h-4" />
           <span>Ends {formatDate(vendor.contractEnd)}</span>
         </div>
       </div>
       
-      <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
-        Owner: {vendor.ownerName}
-      </div>
+      {!isRequester && (
+        <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+          Owner: {vendor.ownerName}
+        </div>
+      )}
     </div>
   );
 }

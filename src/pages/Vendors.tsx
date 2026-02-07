@@ -3,9 +3,11 @@ import { VendorCard } from "@/components/VendorCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { 
   vendors, 
+  requests,
   formatCurrency, 
   formatDate,
-  Vendor 
+  Vendor,
+  getCurrentUser
 } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +42,8 @@ import {
   Calendar,
   DollarSign,
   LayoutGrid,
-  List
+  List,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/search-input";
@@ -53,14 +56,34 @@ const Vendors = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  
+  const currentUser = getCurrentUser();
+  const isRequester = currentUser.role === 'requester';
 
-  // Get unique categories
-  const categories = Array.from(new Set(vendors.map(v => v.category)));
+  // For requesters, only show vendors they have used in their requests
+  const accessibleVendors = useMemo(() => {
+    if (!isRequester) return vendors;
+    
+    // Get vendor IDs from user's requests
+    const userRequests = requests.filter(r => r.requesterId === currentUser.id);
+    const userVendorIds = new Set(userRequests.map(r => r.vendorId).filter(Boolean));
+    
+    // Also include vendors from requests in user's department
+    const deptRequests = requests.filter(r => r.department === currentUser.department);
+    deptRequests.forEach(r => {
+      if (r.vendorId) userVendorIds.add(r.vendorId);
+    });
+    
+    return vendors.filter(v => userVendorIds.has(v.id));
+  }, [isRequester, currentUser.id, currentUser.department]);
+
+  // Get unique categories from accessible vendors
+  const categories = Array.from(new Set(accessibleVendors.map(v => v.category)));
 
   // Filter vendors with search
   const searchedVendors = useMemo(() => 
-    searchItems(vendors, searchQuery, ['name', 'category', 'status']),
-    [searchQuery]
+    searchItems(accessibleVendors, searchQuery, ['name', 'category', 'status']),
+    [accessibleVendors, searchQuery]
   );
 
   // Apply category filter
@@ -71,9 +94,10 @@ const Vendors = () => {
     [searchedVendors, categoryFilter]
   );
 
-  // Stats
+  // Stats - different for requesters
   const totalAnnualSpend = vendors.reduce((sum, v) => sum + v.annualSpend, 0);
   const activeVendors = vendors.filter(v => v.status === 'active').length;
+  const myVendorCount = accessibleVendors.length;
 
   const handleVendorClick = (vendor: Vendor) => {
     setSelectedVendor(vendor);
@@ -87,29 +111,57 @@ const Vendors = () => {
         <div>
           <h1 className="text-3xl font-bold">Vendors</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your vendor relationships and contracts
+            {isRequester 
+              ? "Vendors associated with your department's requests"
+              : "Manage your vendor relationships and contracts"
+            }
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Vendor
-        </Button>
+        {!isRequester && (
+          <Button className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Vendor
+          </Button>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Total Vendors</p>
-          <p className="text-2xl font-bold mt-1">{vendors.length}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Active Vendors</p>
-          <p className="text-2xl font-bold mt-1">{activeVendors}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Total Annual Spend</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(totalAnnualSpend)}</p>
-        </div>
+      {/* Stats - Role-based visibility */}
+      <div className={cn("grid gap-4", isRequester ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3")}>
+        {isRequester ? (
+          <>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Building2 className="w-4 h-4" />
+                <p className="text-sm">My Department's Vendors</p>
+              </div>
+              <p className="text-2xl font-bold">{myVendorCount}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <User className="w-4 h-4" />
+                <p className="text-sm">Active Contracts</p>
+              </div>
+              <p className="text-2xl font-bold">
+                {accessibleVendors.filter(v => v.status === 'active').length}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Total Vendors</p>
+              <p className="text-2xl font-bold mt-1">{vendors.length}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Active Vendors</p>
+              <p className="text-2xl font-bold mt-1">{activeVendors}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Total Annual Spend</p>
+              <p className="text-2xl font-bold mt-1">{formatCurrency(totalAnnualSpend)}</p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Filters */}
@@ -119,7 +171,7 @@ const Vendors = () => {
           onChange={setSearchQuery}
           placeholder="Search vendors..."
           resultsCount={filteredVendors.length}
-          totalCount={vendors.length}
+          totalCount={accessibleVendors.length}
           showResultsCount={searchQuery.length >= 2}
           syncToUrl={true}
           className="flex-1 min-w-[200px] max-w-md"
@@ -177,9 +229,9 @@ const Vendors = () => {
               <TableRow>
                 <TableHead>Vendor</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Owner</TableHead>
+                {!isRequester && <TableHead>Owner</TableHead>}
                 <TableHead>Contract End</TableHead>
-                <TableHead className="text-right">Annual Spend</TableHead>
+                {!isRequester && <TableHead className="text-right">Annual Spend</TableHead>}
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -192,9 +244,9 @@ const Vendors = () => {
                 >
                   <TableCell className="font-medium">{vendor.name}</TableCell>
                   <TableCell>{vendor.category}</TableCell>
-                  <TableCell>{vendor.ownerName}</TableCell>
+                  {!isRequester && <TableCell>{vendor.ownerName}</TableCell>}
                   <TableCell>{formatDate(vendor.contractEnd)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(vendor.annualSpend)}</TableCell>
+                  {!isRequester && <TableCell className="text-right">{formatCurrency(vendor.annualSpend)}</TableCell>}
                   <TableCell>
                     <StatusBadge 
                       variant={vendor.status === 'active' ? 'success' : 'neutral'}
@@ -276,22 +328,26 @@ const Vendors = () => {
                 </div>
               </div>
 
-              {/* Spend */}
-              <div className="p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-muted-foreground" />
-                    <span className="font-medium">Annual Spend</span>
+              {/* Spend - Hidden for requesters */}
+              {!isRequester && (
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-muted-foreground" />
+                      <span className="font-medium">Annual Spend</span>
+                    </div>
+                    <span className="text-2xl font-bold">{formatCurrency(selectedVendor.annualSpend)}</span>
                   </div>
-                  <span className="text-2xl font-bold">{formatCurrency(selectedVendor.annualSpend)}</span>
                 </div>
-              </div>
+              )}
 
-              {/* Owner */}
-              <div className="text-sm">
-                <span className="text-muted-foreground">Owner: </span>
-                <span className="font-medium">{selectedVendor.ownerName}</span>
-              </div>
+              {/* Owner - Hidden for requesters */}
+              {!isRequester && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Owner: </span>
+                  <span className="font-medium">{selectedVendor.ownerName}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -299,7 +355,7 @@ const Vendors = () => {
             <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
               Close
             </Button>
-            <Button>Edit Vendor</Button>
+            {!isRequester && <Button>Edit Vendor</Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
