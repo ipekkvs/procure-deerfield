@@ -3,37 +3,137 @@ import {
   formatCurrency, 
   getDepartmentLabel, 
   getSubDepartmentLabel,
-  getWorkflowSteps,
-  getStepLabel,
-  isStepSkipped,
-  PurchaseRequest,
-  ApprovalStep
+  PurchaseRequest
 } from "@/lib/mockData";
-import { ArrowRight, CheckCircle2, X, AlertCircle, DollarSign } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckCircle2, DollarSign, AlertCircle, Paperclip } from "lucide-react";
+import { ApprovalWorkflowDiagram, WorkflowNode, WorkflowStep, ParallelSteps } from "@/components/ApprovalWorkflowDiagram";
+
+function buildWorkflowNodes(
+  requestType: 'new_purchase' | 'renewal',
+  budgetedAmount: number
+): WorkflowNode[] {
+  const requiresNegotiation = budgetedAmount > 25000;
+  const isRenewal = requestType === 'renewal';
+
+  const nodes: WorkflowNode[] = [];
+
+  // Step 1 & 2: Intake & Requirements (combined as they're both by requester)
+  nodes.push({
+    id: 'intake_requirements',
+    label: 'Intake & Requirements',
+    description: 'Steps 1 & 2 - Form submission',
+    status: 'completed',
+    approver: { name: 'You', role: 'Requester' },
+    completedAt: 'Just now',
+  } as WorkflowStep);
+
+  // Step 3: Department Pre-Approval
+  nodes.push({
+    id: 'department_pre',
+    label: 'Department Pre-Approval',
+    description: 'Step 3 - Department/Pod Leader review',
+    status: 'current',
+    approver: { name: 'Department Leader', role: 'Approver' },
+  } as WorkflowStep);
+
+  // Step 4: Compliance & IT Review (Parallel) - Skip for renewals
+  if (isRenewal) {
+    nodes.push({
+      steps: [
+        {
+          id: 'compliance',
+          label: 'Compliance Review',
+          status: 'skipped',
+          conditionLabel: 'Skipped - Not required for renewals',
+        } as WorkflowStep,
+        {
+          id: 'it_review',
+          label: 'IT Review',
+          status: 'skipped',
+          conditionLabel: 'Skipped - Not required for renewals',
+        } as WorkflowStep,
+      ],
+      label: 'Parallel Reviews',
+    } as ParallelSteps);
+  } else {
+    nodes.push({
+      steps: [
+        {
+          id: 'compliance',
+          label: 'Compliance Review',
+          description: 'Data privacy, security & regulatory',
+          status: 'pending',
+          approver: { name: 'Compliance Team', role: 'Reviewer' },
+        } as WorkflowStep,
+        {
+          id: 'it_review',
+          label: 'IT Review',
+          description: 'Technical compatibility & security',
+          status: 'pending',
+          approver: { name: 'IT Team', role: 'Reviewer' },
+        } as WorkflowStep,
+      ],
+      label: 'Parallel Reviews',
+    } as ParallelSteps);
+  }
+
+  // Step 5: Negotiation (conditional on amount)
+  nodes.push({
+    id: 'negotiation',
+    label: 'Negotiation',
+    description: 'Director of Operations review',
+    status: requiresNegotiation ? 'pending' : 'skipped',
+    isConditional: true,
+    conditionLabel: requiresNegotiation 
+      ? `Required - Amount exceeds $25,000`
+      : 'Skipped - Under $25K threshold',
+    approver: requiresNegotiation 
+      ? { name: 'Director of Operations', role: 'Negotiator' } 
+      : undefined,
+  } as WorkflowStep);
+
+  // Step 6: Finance & Department Final Approval (can be parallel if negotiated)
+  // For preview, we show them as potentially parallel
+  nodes.push({
+    steps: [
+      {
+        id: 'finance_final',
+        label: 'Finance Approval',
+        description: 'Final budget approval',
+        status: 'pending',
+        approver: { name: 'Finance Team', role: 'Approver' },
+      } as WorkflowStep,
+      {
+        id: 'department_final',
+        label: 'Dept. Re-Approval',
+        description: 'If price was negotiated',
+        status: 'pending',
+        isConditional: true,
+        conditionLabel: 'Only if price changes',
+        approver: { name: 'Department Head', role: 'Approver' },
+      } as WorkflowStep,
+    ],
+    label: 'Final Approvals',
+  } as ParallelSteps);
+
+  // Step 7: Contracting
+  nodes.push({
+    id: 'contracting',
+    label: 'Contracting',
+    description: 'Contract signing & system setup',
+    status: 'pending',
+    approver: { name: 'Finance', role: 'Contract Admin' },
+  } as WorkflowStep);
+
+  return nodes;
+}
 
 export function ReviewStep({ formData }: StepProps) {
-  // Create a mock request to calculate workflow steps
-  const mockRequest: Partial<PurchaseRequest> = {
-    requestType: formData.requestType,
-    budgetedAmount: formData.budgetedAmount || 0,
-    priceChanged: false,
-  };
-
-  const workflowSteps = getWorkflowSteps(mockRequest as PurchaseRequest);
-  
-  // All possible steps for display
-  const allSteps: ApprovalStep[] = [
-    'intake',
-    'requirements', 
-    'department_pre_approval',
-    'compliance_it_review',
-    'negotiation',
-    'finance_final_approval',
-    'contracting'
-  ];
-
   const requiresNegotiation = (formData.budgetedAmount || 0) > 25000;
+  const workflowNodes = buildWorkflowNodes(
+    formData.requestType,
+    formData.budgetedAmount || 0
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -90,6 +190,23 @@ export function ReviewStep({ formData }: StepProps) {
               <p className="font-medium capitalize">{formData.urgency}</p>
             </div>
           </div>
+
+          {/* Uploaded Files */}
+          {formData.uploadedFiles.length > 0 && (
+            <div className="pt-4 border-t">
+              <span className="text-sm text-muted-foreground flex items-center gap-2">
+                <Paperclip className="w-4 h-4" />
+                Attached Documents ({formData.uploadedFiles.length})
+              </span>
+              <div className="mt-2 space-y-1">
+                {formData.uploadedFiles.filter(f => f.status === 'complete').map(file => (
+                  <p key={file.id} className="text-sm text-primary">
+                    • {file.name}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="pt-4 border-t">
             <span className="text-sm text-muted-foreground">Description</span>
@@ -110,68 +227,24 @@ export function ReviewStep({ formData }: StepProps) {
         </div>
       </div>
 
-      {/* Approval Workflow Preview */}
-      <div className="rounded-xl border bg-card p-6">
-        <h3 className="font-semibold mb-2">Approval Workflow</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Based on your request type and amount, this request will follow this workflow:
-        </p>
-        
-        <div className="space-y-3">
-          {allSteps.map((step, index) => {
-            const isIncluded = workflowSteps.includes(step);
-            const isSkipped = isStepSkipped(step, mockRequest as PurchaseRequest);
-            const isConditional = step === 'negotiation' || step === 'compliance_it_review';
-            
-            return (
-              <div 
-                key={step}
-                className={cn(
-                  "flex items-center gap-3 p-3 rounded-lg border",
-                  isIncluded ? "bg-card" : "bg-muted/30 opacity-60"
-                )}
-              >
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-                  isIncluded ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                )}>
-                  {isSkipped ? (
-                    <X className="w-4 h-4" />
-                  ) : (
-                    index + 1
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className={cn(
-                    "font-medium text-sm",
-                    !isIncluded && "line-through"
-                  )}>
-                    {getStepLabel(step)}
-                  </p>
-                  {isSkipped && step === 'compliance_it_review' && (
-                    <p className="text-xs text-muted-foreground">
-                      Skipped for contract renewals
-                    </p>
-                  )}
-                  {isConditional && step === 'negotiation' && (
-                    <p className="text-xs text-muted-foreground">
-                      {requiresNegotiation 
-                        ? "Required - amount exceeds $25,000" 
-                        : "Skipped - amount is $25,000 or less"}
-                    </p>
-                  )}
-                </div>
-                {isIncluded && (
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                )}
-              </div>
-            );
-          })}
+      {/* Approval Workflow Diagram */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold">Approval Workflow</h3>
+          <p className="text-sm text-muted-foreground">
+            Based on your request type and amount, this request will follow this workflow. Click any step for details.
+          </p>
         </div>
+
+        <ApprovalWorkflowDiagram
+          nodes={workflowNodes}
+          requestType={formData.requestType}
+          budgetedAmount={formData.budgetedAmount || 0}
+        />
 
         {/* High-value notice */}
         {requiresNegotiation && (
-          <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
             <DollarSign className="w-4 h-4 text-primary mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-primary">High-Value Request</p>
@@ -184,7 +257,7 @@ export function ReviewStep({ formData }: StepProps) {
 
         {/* Renewal notice */}
         {formData.requestType === 'renewal' && (
-          <div className="mt-4 p-3 rounded-lg bg-status-info-bg border border-status-info/20 flex items-start gap-2">
+          <div className="p-3 rounded-lg bg-status-info-bg border border-status-info/20 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-status-info mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-status-info">Contract Renewal</p>

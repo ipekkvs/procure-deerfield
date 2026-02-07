@@ -5,6 +5,7 @@ import {
   SubDepartment, 
   Urgency 
 } from "@/lib/mockData";
+import { UploadedFile } from "./FileUpload";
 
 export interface RequestFormData {
   // Step 1: Initial Intake
@@ -19,6 +20,7 @@ export interface RequestFormData {
   // Step 2: Requirements Gathering
   title: string;
   documentationUrls: string[];
+  uploadedFiles: UploadedFile[];
   targetSignDate: string;
   budgetedAmount: number | null;
   urgency: Urgency;
@@ -35,6 +37,7 @@ export const initialFormData: RequestFormData = {
   redundancyCheckConfirmed: false,
   title: "",
   documentationUrls: [],
+  uploadedFiles: [],
   targetSignDate: "",
   budgetedAmount: null,
   urgency: "medium",
