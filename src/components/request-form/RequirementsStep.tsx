@@ -11,8 +11,9 @@ import {
   formatCurrency,
   getDepartmentLabel
 } from "@/lib/mockData";
+import { ContractTerm } from "@/lib/riskScoring";
 import { cn } from "@/lib/utils";
-import { Calendar, DollarSign, Info, AlertTriangle, TrendingDown } from "lucide-react";
+import { Calendar, DollarSign, Info, AlertTriangle, TrendingDown, Clock, RefreshCcw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 const urgencyOptions: { value: Urgency; label: string; description: string }[] = [
@@ -20,6 +21,14 @@ const urgencyOptions: { value: Urgency; label: string; description: string }[] =
   { value: 'medium', label: 'Medium', description: 'Standard - 14 days' },
   { value: 'high', label: 'High', description: 'Urgent - 7 days' },
   { value: 'critical', label: 'Critical', description: 'Immediate - ASAP' },
+];
+
+const contractTermOptions: { value: ContractTerm; label: string; years: number }[] = [
+  { value: 'month_to_month', label: 'Month-to-month / No commitment', years: 0 },
+  { value: '1_year', label: '1 year or less', years: 1 },
+  { value: '2_years', label: '2 years', years: 2 },
+  { value: '3_years', label: '3 years', years: 3 },
+  { value: '4_plus_years', label: '4+ years', years: 4 },
 ];
 
 export function RequirementsStep({ formData, updateFormData }: StepProps) {
@@ -36,6 +45,16 @@ export function RequirementsStep({ formData, updateFormData }: StepProps) {
   const spentPercentage = departmentBudget 
     ? Math.round((departmentBudget.spentToDate / departmentBudget.totalBudget) * 100)
     : 0;
+  
+  // Multi-year commitment calculation
+  const isMultiYear = formData.contractTerm === '2_years' || 
+    formData.contractTerm === '3_years' || 
+    formData.contractTerm === '4_plus_years';
+  
+  const contractYears = contractTermOptions.find(o => o.value === formData.contractTerm)?.years || 1;
+  const annualCost = formData.budgetedAmount || 0;
+  const totalCommitment = isMultiYear ? annualCost * contractYears : annualCost;
+  const isLowAnnualButMultiYear = isMultiYear && annualCost < 10000 && annualCost > 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -185,34 +204,103 @@ export function RequirementsStep({ formData, updateFormData }: StepProps) {
             )}
           </div>
         )}
+      </div>
+      
+      {/* Contract Term */}
+      <div className={cn(
+        "rounded-xl border p-6",
+        isMultiYear ? "bg-status-warning-bg border-status-warning/30" : "bg-card"
+      )}>
+        <Label className="text-base font-semibold flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          Contract Term
+        </Label>
+        <p className="text-sm text-muted-foreground mt-1 mb-4">
+          How long is this contract commitment?
+        </p>
         
-        {/* Over-Budget Warning */}
-        {isOverBudget && (
-          <div className="p-4 rounded-lg bg-status-error-bg border border-status-error/30 space-y-3 animate-fade-in">
+        <RadioGroup
+          value={formData.contractTerm}
+          onValueChange={(v) => updateFormData({ contractTerm: v as ContractTerm })}
+          className="space-y-3"
+        >
+          {contractTermOptions.map((option) => (
+            <div key={option.value} className="flex items-center space-x-3">
+              <RadioGroupItem value={option.value} id={`term_${option.value}`} />
+              <Label htmlFor={`term_${option.value}`} className="cursor-pointer text-sm">
+                {option.label}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+        
+        {/* Total Commitment Calculation */}
+        {isMultiYear && formData.budgetedAmount && (
+          <div className="mt-6 p-4 rounded-lg bg-status-warning/10 border border-status-warning/30 space-y-3 animate-fade-in">
             <div className="flex items-start gap-3">
-              <TrendingDown className="w-5 h-5 text-status-error mt-0.5" />
-              <div>
-                <p className="font-semibold text-status-error">
-                  ⚠️ OVER BUDGET BY {formatCurrency(shortfall)}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This request exceeds your remaining budget by <strong>{formatCurrency(shortfall)}</strong>.
-                  You can still submit this request, but it will require Finance exception approval.
+              <RefreshCcw className="w-5 h-5 text-status-warning mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-status-warning">⚠️ MULTI-YEAR COMMITMENT</p>
+                
+                <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Annual Cost</span>
+                    <p className="font-semibold">{formatCurrency(annualCost)}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Contract Term</span>
+                    <p className="font-semibold">{contractYears} years</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">TOTAL COMMITMENT</span>
+                    <p className="font-bold text-lg text-status-warning">{formatCurrency(totalCommitment)}</p>
+                  </div>
+                </div>
+                
+                {isLowAnnualButMultiYear && (
+                  <div className="mt-3 p-2 rounded bg-background/50 text-sm">
+                    <p className="text-muted-foreground">
+                      Even though the annual cost is under $10,000, this multi-year commitment 
+                      requires Finance review.
+                    </p>
+                  </div>
+                )}
+                
+                <p className="text-sm text-muted-foreground mt-3">
+                  Multi-year commitments require Finance review regardless of annual amount.
                 </p>
               </div>
-            </div>
-            
-            <div className="text-sm text-muted-foreground bg-background/50 rounded-lg p-3 space-y-1">
-              <p className="font-medium text-foreground">Finance will review this with your Department Head to discuss:</p>
-              <ul className="list-disc list-inside space-y-0.5 ml-2">
-                <li>Why this purchase is critical now</li>
-                <li>Where budget can be reallocated from</li>
-                <li>Whether this can be deferred to next quarter</li>
-              </ul>
             </div>
           </div>
         )}
       </div>
+
+      {/* Over-Budget Warning */}
+      {isOverBudget && (
+        <div className="rounded-xl border border-status-error/30 bg-status-error-bg p-6 space-y-3 animate-fade-in">
+          <div className="flex items-start gap-3">
+            <TrendingDown className="w-5 h-5 text-status-error mt-0.5" />
+            <div>
+              <p className="font-semibold text-status-error">
+                ⚠️ OVER BUDGET BY {formatCurrency(shortfall)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                This request exceeds your remaining budget by <strong>{formatCurrency(shortfall)}</strong>.
+                You can still submit this request, but it will require Finance exception approval.
+              </p>
+            </div>
+          </div>
+          
+          <div className="text-sm text-muted-foreground bg-background/50 rounded-lg p-3 space-y-1">
+            <p className="font-medium text-foreground">Finance will review this with your Department Head to discuss:</p>
+            <ul className="list-disc list-inside space-y-0.5 ml-2">
+              <li>Why this purchase is critical now</li>
+              <li>Where budget can be reallocated from</li>
+              <li>Whether this can be deferred to next quarter</li>
+            </ul>
+          </div>
+        </div>
+      )}
       
       {/* Over-Budget Justification (Required when over budget) */}
       {isOverBudget && (

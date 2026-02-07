@@ -295,37 +295,7 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
           </div>
         </div>
       </div>
-
-      {/* Contract Term */}
-      <div className="rounded-xl border bg-card p-6">
-        <Label className="text-base font-semibold">Contract Term</Label>
-        <p className="text-sm text-muted-foreground mt-1 mb-4">
-          Multi-year commitments automatically trigger Finance review
-        </p>
-        <Select 
-          value={formData.contractTerm} 
-          onValueChange={(v) => updateFormData({ contractTerm: v as ContractTerm })}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select term" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1_year">1 year</SelectItem>
-            <SelectItem value="2_years">2 years</SelectItem>
-            <SelectItem value="3_years">3 years</SelectItem>
-            <SelectItem value="other">Other / Custom</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        {(formData.contractTerm === '2_years' || formData.contractTerm === '3_years' || formData.contractTerm === 'other') && (
-          <div className="mt-3 p-3 rounded-lg bg-status-info-bg border border-status-info/20 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-status-info" />
-            <span className="text-sm">
-              Multi-year commitment requires Finance approval regardless of amount
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Contract Term - Moved to RequirementsStep for better flow with budget calculation */}
 
       {/* Use Case Change (Renewals Only) */}
       {formData.requestType === 'renewal' && (

@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'overbudget' | 'contracting'; // Updated type
+type ApprovalView = 'all' | 'department' | 'compliance' | 'it' | 'negotiation' | 'finance' | 'overbudget' | 'multiyear' | 'contracting';
 
 // Mock over-budget requests for demonstration
 const overBudgetRequests = [
@@ -64,6 +64,57 @@ const overBudgetRequests = [
     urgency: 'critical' as const,
     daysInQueue: 1,
     budgetSpentPercentage: 108,
+  },
+];
+
+// Mock multi-year commitment requests
+const multiYearRequests: Array<{
+  id: string;
+  title: string;
+  requesterName: string;
+  department: 'investment' | '3dc' | 'deerfield_intelligence' | 'business_operations' | 'external_operations' | 'deerfield_foundation';
+  annualCost: number;
+  contractYears: number;
+  totalCommitment: number;
+  isLowAnnual: boolean;
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+  daysInQueue: number;
+}> = [
+  {
+    id: 'MY-001',
+    title: 'CRM System',
+    requesterName: 'Alex Johnson',
+    department: 'investment',
+    annualCost: 8000,
+    contractYears: 3,
+    totalCommitment: 24000,
+    isLowAnnual: true,
+    urgency: 'medium',
+    daysInQueue: 1,
+  },
+  {
+    id: 'MY-002',
+    title: 'Document Management System',
+    requesterName: 'Mike Wilson',
+    department: 'business_operations',
+    annualCost: 15000,
+    contractYears: 2,
+    totalCommitment: 30000,
+    isLowAnnual: false,
+    urgency: 'high',
+    daysInQueue: 3,
+  },
+  {
+    id: 'MY-003',
+    title: 'Team Collaboration Tool',
+    requesterName: 'Emily Brown',
+    department: 'deerfield_intelligence',
+    annualCost: 6500,
+    contractYears: 4,
+    totalCommitment: 26000,
+    isLowAnnual: true,
+    urgency: 'critical',
+    daysInQueue: 2,
   },
 ];
 
@@ -107,6 +158,8 @@ const Approvals = () => {
         );
       case 'overbudget':
         return []; // Handled separately with overBudgetRequests
+      case 'multiyear':
+        return []; // Handled separately with multiYearRequests
       case 'contracting':
         return pendingRequests.filter(r => 
           r.currentStep === 'contracting'
@@ -168,6 +221,7 @@ const Approvals = () => {
     { value: 'negotiation', label: 'Negotiation', icon: Briefcase, count: getRequestsForView('negotiation').length },
     { value: 'finance', label: 'Finance', icon: DollarSign, count: getRequestsForView('finance').length },
     { value: 'overbudget', label: 'Over-Budget', icon: AlertTriangle, count: overBudgetRequests.length, highlight: true },
+    { value: 'multiyear', label: 'Multi-Year', icon: RefreshCcw, count: multiYearRequests.length, highlight: multiYearRequests.some(r => r.isLowAnnual) },
     { value: 'contracting', label: 'Contracting', icon: FileText, count: getRequestsForView('contracting').length },
   ];
 
@@ -378,6 +432,129 @@ const Approvals = () => {
                 </div>
               )}
             </div>
+          ) : currentView === 'multiyear' ? (
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg bg-status-warning-bg border border-status-warning/30 flex items-start gap-3">
+                <RefreshCcw className="w-5 h-5 text-status-warning mt-0.5" />
+                <div>
+                  <p className="font-semibold text-status-warning">🔄 Multi-Year Commitments Requiring Finance Review</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    These requests involve multi-year contract terms and require Finance approval regardless of annual cost.
+                  </p>
+                </div>
+              </div>
+
+              {multiYearRequests.length > 0 ? (
+                <div className="space-y-4">
+                  {multiYearRequests.map((request) => (
+                    <div key={request.id} className={cn(
+                      "rounded-xl border bg-card overflow-hidden",
+                      request.isLowAnnual ? "border-status-warning/50" : "border-border"
+                    )}>
+                      {/* Header */}
+                      <div className={cn(
+                        "p-4 border-b",
+                        request.isLowAnnual ? "bg-status-warning-bg border-status-warning/20" : "bg-muted/30"
+                      )}>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <RefreshCcw className="w-4 h-4 text-status-warning" />
+                              <span className="text-xs font-medium text-status-warning uppercase">
+                                {request.contractYears}-Year Commitment
+                              </span>
+                              {request.isLowAnnual && (
+                                <span className="text-xs bg-status-warning/20 text-status-warning px-2 py-0.5 rounded-full">
+                                  Annual &lt;$10K
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-lg font-semibold mt-1">{request.title}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Requested by {request.requesterName} • {request.daysInQueue} day{request.daysInQueue !== 1 ? 's' : ''} ago
+                            </p>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-1 text-xs font-medium rounded-full",
+                            request.urgency === 'critical' ? "bg-status-error/20 text-status-error" :
+                            request.urgency === 'high' ? "bg-status-warning/20 text-status-warning" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)} Priority
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Department</span>
+                            <p className="font-medium">{getDepartmentLabel(request.department)}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Annual Cost</span>
+                            <p className="font-semibold">{formatCurrency(request.annualCost)}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Contract Term</span>
+                            <p className="font-semibold">{request.contractYears} years</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">TOTAL COMMITMENT</span>
+                            <p className="font-bold text-lg text-status-warning">{formatCurrency(request.totalCommitment)}</p>
+                          </div>
+                        </div>
+
+                        {/* Special Note for Low Annual */}
+                        {request.isLowAnnual && (
+                          <div className="p-3 rounded-lg bg-status-warning/10 border border-status-warning/30 text-sm">
+                            <p className="text-muted-foreground">
+                              <strong className="text-status-warning">⚠️ Low annual but multi-year:</strong> {formatCurrency(request.annualCost)}/year × {request.contractYears} years = {formatCurrency(request.totalCommitment)} total commitment.
+                              Requires Finance review due to multi-year term even though annual cost is under $10K.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Commitment Breakdown */}
+                        <div className="p-3 rounded-lg bg-muted/30 border">
+                          <p className="text-sm font-medium mb-2">Commitment Breakdown</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{formatCurrency(request.annualCost)}</span>
+                            <span>×</span>
+                            <span>{request.contractYears} years</span>
+                            <span>=</span>
+                            <span className="font-bold text-foreground">{formatCurrency(request.totalCommitment)}</span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-3 pt-2">
+                          <Button variant="outline" className="gap-2">
+                            <Users className="w-4 h-4" />
+                            Contact Dept Head
+                          </Button>
+                          <Button variant="default" className="gap-2 bg-status-success hover:bg-status-success/90">
+                            Approve Commitment
+                          </Button>
+                          <Button variant="outline" className="gap-2">
+                            Request Shorter Term
+                          </Button>
+                          <Button variant="outline" className="gap-2 text-status-error hover:text-status-error">
+                            <XCircle className="w-4 h-4" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No multi-year commitments pending review
+                </div>
+              )}
+            </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Request list */}
@@ -486,6 +663,33 @@ const Approvals = () => {
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Total shortfall: {formatCurrency(overBudgetRequests.reduce((sum, r) => sum + r.shortfall, 0))}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Multi-Year Commitments Alert */}
+                {multiYearRequests.length > 0 && (
+                  <div 
+                    className="rounded-xl border border-status-warning/30 bg-status-warning-bg p-4 cursor-pointer hover:bg-status-warning/10 transition-colors"
+                    onClick={() => setCurrentView('multiyear')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-status-warning/20">
+                        <RefreshCcw className="w-5 h-5 text-status-warning" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-status-warning">
+                          🔄 {multiYearRequests.length} Multi-Year Commitment{multiYearRequests.length !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Total: {formatCurrency(multiYearRequests.reduce((sum, r) => sum + r.totalCommitment, 0))}
+                          {multiYearRequests.some(r => r.isLowAnnual) && (
+                            <span className="ml-1 text-status-warning">
+                              • {multiYearRequests.filter(r => r.isLowAnnual).length} with annual &lt;$10K
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

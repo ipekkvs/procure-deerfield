@@ -4,7 +4,7 @@ import { RequestType, RequestCategory, Department } from './mockData';
 
 // ============= TYPES =============
 
-export type ContractTerm = '1_year' | '2_years' | '3_years' | 'other';
+export type ContractTerm = '1_year' | '2_years' | '3_years' | '4_plus_years' | 'month_to_month';
 
 export type RiskTier = 0 | 1 | 2 | 3 | 4;
 
@@ -217,7 +217,7 @@ export function calculateRiskAssessment(input: RiskScoringInput): RiskAssessment
   const isMultiYear = 
     factors.contractTerm === '2_years' || 
     factors.contractTerm === '3_years' ||
-    factors.contractTerm === 'other';
+    factors.contractTerm === '4_plus_years';
   
   // Over budget check
   const isOverBudget = amount > departmentBudgetRemaining;
