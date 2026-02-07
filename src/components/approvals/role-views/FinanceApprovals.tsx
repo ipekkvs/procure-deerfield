@@ -18,17 +18,21 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, DollarSign, CalendarDays, AlertTriangle, CheckCircle2, Eye } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 export function FinanceApprovals() {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [openSections, setOpenSections] = useState({ overBudget: true, material: true, multiYear: false, auto: false });
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Categorize requests
-  const overBudgetRequests: ApprovalRequest[] = useMemo(() => 
+  // All pending requests for search baseline
+  const allPendingRequests = useMemo(() => 
     requests
-      .filter(r => r.status === 'pending' && r.budgetedAmount > 25000 && !approvedIds.has(r.id))
+      .filter(r => r.status === 'pending' && !approvedIds.has(r.id))
       .map(r => ({
         id: r.id,
         title: r.title,
@@ -36,46 +40,24 @@ export function FinanceApprovals() {
         amount: r.budgetedAmount,
         requesterName: r.requesterName,
         daysWaiting: r.daysInCurrentStage,
-        isOverBudget: true,
+        isOverBudget: r.budgetedAmount > 25000,
         isNewVendor: !r.vendorId,
-        urgency: 'critical' as const,
+        urgency: r.urgency as 'low' | 'medium' | 'high' | 'critical',
+        category: r.category,
       })),
     [approvedIds]
   );
 
-  const materialPurchases: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => r.status === 'pending' && r.budgetedAmount >= 10000 && r.budgetedAmount <= 25000 && !approvedIds.has(r.id))
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'medium' as const,
-      })),
-    [approvedIds]
+  // Apply search
+  const searchedRequests = useMemo(() => 
+    searchItems(allPendingRequests, searchTerm, ['title', 'department', 'requesterName']),
+    [allPendingRequests, searchTerm]
   );
 
-  const multiYearCommitments: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => r.status === 'pending' && r.category === 'services' && r.budgetedAmount > 50000 && !approvedIds.has(r.id))
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'medium' as const,
-      })),
-    [approvedIds]
-  );
+  // Categorize searched requests
+  const overBudgetRequests = searchedRequests.filter(r => r.amount > 25000);
+  const materialPurchases = searchedRequests.filter(r => r.amount >= 10000 && r.amount <= 25000);
+  const multiYearCommitments = searchedRequests.filter(r => r.category === 'services' && r.amount > 50000);
 
   const autoApproved = requests.filter(r => r.status === 'approved' && r.budgetedAmount < 10000).slice(0, 5);
 
@@ -115,7 +97,7 @@ export function FinanceApprovals() {
     toast({ title: "Request Rejected", description: "The request has been rejected.", variant: "destructive" });
   }, []);
 
-  const totalPending = overBudgetRequests.length + materialPurchases.length + multiYearCommitments.length;
+  const totalPending = searchedRequests.length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -127,8 +109,23 @@ export function FinanceApprovals() {
         </p>
       </div>
 
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search all procurement requests..."
+        resultsCount={searchedRequests.length}
+        totalCount={allPendingRequests.length}
+        showResultsCount={searchTerm.length >= 2}
+        syncToUrl={true}
+      />
+
       {totalPending === 0 ? (
-        <EmptyState />
+        searchTerm.length >= 2 ? (
+          <NoSearchResults searchTerm={searchTerm} onClear={() => setSearchTerm("")} />
+        ) : (
+          <EmptyState />
+        )
       ) : (
         <div className="space-y-4 max-w-4xl">
           {/* Over-Budget Exceptions */}

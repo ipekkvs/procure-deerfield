@@ -13,24 +13,21 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Shield, AlertTriangle, CheckCircle2, Eye, FileCheck } from "lucide-react";
 import { preApprovedVendors } from "@/lib/riskScoring";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 export function ComplianceApprovals() {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [openSections, setOpenSections] = useState({ high: true, standard: true, useCase: false, auto: false });
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // High priority: new vendors with sensitive data
-  const highPriority: ApprovalRequest[] = useMemo(() => 
+  // All compliance requests (base)
+  const allComplianceRequests = useMemo(() => 
     requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.complianceApproved && 
-        !approvedIds.has(r.id) &&
-        (r.description.toLowerCase().includes('patient') || 
-         r.description.toLowerCase().includes('hipaa') ||
-         (!r.vendorId && r.category === 'saas'))
-      )
+      .filter(r => r.status === 'pending' && !r.complianceApproved && !approvedIds.has(r.id))
       .map(r => ({
         id: r.id,
         title: r.title,
@@ -40,58 +37,39 @@ export function ComplianceApprovals() {
         daysWaiting: r.daysInCurrentStage,
         isOverBudget: false,
         isNewVendor: !r.vendorId,
-        urgency: 'critical' as const,
+        urgency: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+        description: r.description,
+        category: r.category,
+        licensesSeatsCount: r.licensesSeatsCount,
+        requestType: r.requestType,
       })),
     [approvedIds]
+  );
+
+  // Apply search
+  const searchedRequests = useMemo(() => 
+    searchItems(allComplianceRequests, searchTerm, ['title', 'department', 'category']),
+    [allComplianceRequests, searchTerm]
+  );
+
+  // High priority: new vendors with sensitive data
+  const highPriority = searchedRequests.filter(r => 
+    r.description?.toLowerCase().includes('patient') || 
+    r.description?.toLowerCase().includes('hipaa') ||
+    (r.isNewVendor && r.category === 'saas')
   );
 
   // Standard: DPAs, PII
-  const standardReview: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.complianceApproved && 
-        !approvedIds.has(r.id) &&
-        r.category === 'saas' && 
-        r.licensesSeatsCount && r.licensesSeatsCount > 20 &&
-        !highPriority.some(h => h.id === r.id)
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: !r.vendorId,
-        urgency: 'medium' as const,
-      })),
-    [approvedIds, highPriority]
+  const standardReview = searchedRequests.filter(r => 
+    r.category === 'saas' && 
+    r.licensesSeatsCount && r.licensesSeatsCount > 20 &&
+    !highPriority.some(h => h.id === r.id)
   );
 
   // Use case changes
-  const useCaseChanges: ApprovalRequest[] = useMemo(() => 
-    requests
-      .filter(r => 
-        r.status === 'pending' && 
-        !r.complianceApproved && 
-        !approvedIds.has(r.id) &&
-        r.requestType === 'renewal' &&
-        preApprovedVendors.some(v => r.title.toLowerCase().includes(v.toLowerCase()))
-      )
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        department: r.department,
-        amount: r.budgetedAmount,
-        requesterName: r.requesterName,
-        daysWaiting: r.daysInCurrentStage,
-        isOverBudget: false,
-        isNewVendor: false,
-        urgency: 'low' as const,
-      })),
-    [approvedIds]
+  const useCaseChanges = searchedRequests.filter(r => 
+    r.requestType === 'renewal' &&
+    preApprovedVendors.some(v => r.title.toLowerCase().includes(v.toLowerCase()))
   );
 
   const autoApproved = requests.filter(r => r.status === 'approved' && r.budgetedAmount < 10000).slice(0, 5);
@@ -129,7 +107,7 @@ export function ComplianceApprovals() {
     toast({ title: "Request Rejected", description: "Compliance review rejected.", variant: "destructive" });
   }, []);
 
-  const totalPending = highPriority.length + standardReview.length + useCaseChanges.length;
+  const totalPending = searchedRequests.length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -141,8 +119,23 @@ export function ComplianceApprovals() {
         </p>
       </div>
 
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search compliance reviews..."
+        resultsCount={searchedRequests.length}
+        totalCount={allComplianceRequests.length}
+        showResultsCount={searchTerm.length >= 2}
+        syncToUrl={true}
+      />
+
       {totalPending === 0 ? (
-        <EmptyState />
+        searchTerm.length >= 2 ? (
+          <NoSearchResults searchTerm={searchTerm} onClear={() => setSearchTerm("")} />
+        ) : (
+          <EmptyState />
+        )
       ) : (
         <div className="space-y-4 max-w-4xl">
           {/* High Priority */}

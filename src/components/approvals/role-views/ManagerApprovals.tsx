@@ -21,6 +21,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 interface ManagerApprovalsProps {
   user: User;
@@ -30,13 +33,14 @@ export function ManagerApprovals({ user }: ManagerApprovalsProps) {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
 
   const userDepartment = user.department;
   const deptBudget = departmentBudgets.find(b => b.department === userDepartment);
   const deptLabel = departments.find(d => d.value === userDepartment)?.label || userDepartment;
 
-  // Pending my approval
-  const pendingApproval: ApprovalRequest[] = useMemo(() => 
+  // Pending my approval (base list)
+  const pendingApprovalBase: ApprovalRequest[] = useMemo(() => 
     requests
       .filter(r => 
         r.status === 'pending' && 
@@ -56,6 +60,12 @@ export function ManagerApprovals({ user }: ManagerApprovalsProps) {
         urgency: r.urgency,
       })),
     [userDepartment, approvedIds]
+  );
+
+  // Apply search filter
+  const pendingApproval = useMemo(() => 
+    searchItems(pendingApprovalBase, searchTerm, ['title', 'requesterName']),
+    [pendingApprovalBase, searchTerm]
   );
 
   const urgentRequests = pendingApproval.filter(r => r.isOverBudget || r.daysWaiting > 3);
@@ -130,6 +140,17 @@ export function ManagerApprovals({ user }: ManagerApprovalsProps) {
         </p>
       </div>
 
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder={`Search ${deptLabel} requests...`}
+        resultsCount={pendingApproval.length}
+        totalCount={pendingApprovalBase.length}
+        showResultsCount={searchTerm.length >= 2}
+        syncToUrl={true}
+      />
+
       {/* Pending My Approval Section */}
       {pendingApproval.length > 0 ? (
         <div className="space-y-6 max-w-4xl">
@@ -160,7 +181,11 @@ export function ManagerApprovals({ user }: ManagerApprovalsProps) {
           />
         </div>
       ) : (
-        <EmptyState />
+        searchTerm.length >= 2 ? (
+          <NoSearchResults searchTerm={searchTerm} onClear={() => setSearchTerm("")} />
+        ) : (
+          <EmptyState />
+        )
       )}
 
       {/* My Department Section */}

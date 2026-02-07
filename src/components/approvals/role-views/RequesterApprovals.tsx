@@ -10,10 +10,12 @@ import {
   ApprovalCard, 
   ApprovalDetailPanel, 
   EmptyState, 
-  SkeletonList,
   type ApprovalRequest 
 } from "@/components/approvals";
 import { CheckCircle2, FileText, Clock, Plus } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 interface RequesterApprovalsProps {
   user: User;
@@ -22,9 +24,10 @@ interface RequesterApprovalsProps {
 export function RequesterApprovals({ user }: RequesterApprovalsProps) {
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Get user's own requests
-  const myRequests = useMemo(() => 
+  const myRequestsBase = useMemo(() => 
     requests.filter(r => r.requesterId === user.id).map(r => ({
       id: r.id,
       title: r.title,
@@ -41,6 +44,12 @@ export function RequesterApprovals({ user }: RequesterApprovalsProps) {
       totalStages: r.totalStages,
     })),
     [user.id]
+  );
+
+  // Apply search filter
+  const myRequests = useMemo(() => 
+    searchItems(myRequestsBase, searchTerm, ['title', 'department']),
+    [myRequestsBase, searchTerm]
   );
 
   const inProgress = myRequests.filter(r => r.status === 'pending');
@@ -73,6 +82,17 @@ export function RequesterApprovals({ user }: RequesterApprovalsProps) {
         </Link>
       </div>
 
+      {/* Search */}
+      <SearchInput
+        value={searchTerm}
+        onChange={setSearchTerm}
+        placeholder="Search my requests..."
+        resultsCount={myRequests.length}
+        totalCount={myRequestsBase.length}
+        showResultsCount={searchTerm.length >= 2}
+        syncToUrl={true}
+      />
+
       <Tabs defaultValue="all" className="space-y-6">
         <TabsList>
           <TabsTrigger value="all">All ({myRequests.length})</TabsTrigger>
@@ -93,7 +113,11 @@ export function RequesterApprovals({ user }: RequesterApprovalsProps) {
 
         <TabsContent value="all" className="space-y-4">
           {myRequests.length === 0 ? (
-            <EmptyState />
+            searchTerm.length >= 2 ? (
+              <NoSearchResults searchTerm={searchTerm} onClear={() => setSearchTerm("")} />
+            ) : (
+              <EmptyState />
+            )
           ) : (
             <div className="space-y-3">
               {myRequests.map(request => (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { VendorCard } from "@/components/VendorCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { 
@@ -8,7 +8,6 @@ import {
   Vendor 
 } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -33,7 +32,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  Search, 
   Plus,
   Building2,
   ExternalLink,
@@ -45,6 +43,9 @@ import {
   List
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/search-input";
+import { NoSearchResults } from "@/components/search/NoSearchResults";
+import { searchItems } from "@/hooks/useRoleBasedSearch";
 
 const Vendors = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,13 +57,19 @@ const Vendors = () => {
   // Get unique categories
   const categories = Array.from(new Set(vendors.map(v => v.category)));
 
-  // Filter vendors
-  const filteredVendors = vendors.filter(v => {
-    const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || v.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  // Filter vendors with search
+  const searchedVendors = useMemo(() => 
+    searchItems(vendors, searchQuery, ['name', 'category', 'status']),
+    [searchQuery]
+  );
+
+  // Apply category filter
+  const filteredVendors = useMemo(() => 
+    searchedVendors.filter(v => 
+      categoryFilter === 'all' || v.category === categoryFilter
+    ),
+    [searchedVendors, categoryFilter]
+  );
 
   // Stats
   const totalAnnualSpend = vendors.reduce((sum, v) => sum + v.annualSpend, 0);
@@ -107,15 +114,16 @@ const Vendors = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search vendors..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search vendors..."
+          resultsCount={filteredVendors.length}
+          totalCount={vendors.length}
+          showResultsCount={searchQuery.length >= 2}
+          syncToUrl={true}
+          className="flex-1 min-w-[200px] max-w-md"
+        />
         
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[180px]">
@@ -150,7 +158,9 @@ const Vendors = () => {
       </div>
 
       {/* Vendor List */}
-      {viewMode === 'grid' ? (
+      {filteredVendors.length === 0 && searchQuery.length >= 2 ? (
+        <NoSearchResults searchTerm={searchQuery} onClear={() => setSearchQuery("")} />
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredVendors.map((vendor) => (
             <VendorCard
