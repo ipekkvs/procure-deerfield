@@ -14,6 +14,7 @@ import {
   ChevronRight,
   User,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ const navigation = [
   { name: "Approvals", href: "/approvals", icon: ClipboardCheck, badge: true },
   { name: "Renewals", href: "/renewals", icon: RefreshCw },
   { name: "Vendors", href: "/vendors", icon: Building2 },
+  { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
