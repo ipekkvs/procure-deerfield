@@ -52,7 +52,8 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
     
     // Keyword detection for risk factors
     const detection = detectKeywords(text);
-    const isPreApproved = isPreApprovedVendor(formData.vendorName);
+    // Only check pre-approved vendors after 3+ characters typed
+    const isPreApproved = formData.vendorName.length >= 3 && isPreApprovedVendor(formData.vendorName);
     
     setKeywordAlerts({
       aiMl: detection.aiMlDetected,
@@ -109,7 +110,7 @@ export function IntakeStep({ formData, updateFormData }: StepProps) {
           className="text-base"
         />
         
-        {keywordAlerts.preApproved && formData.vendorName && (
+        {keywordAlerts.preApproved && formData.vendorName.length >= 3 && (
           <div className="mt-4 p-4 rounded-lg bg-status-success-bg border border-status-success/20">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-status-success mt-0.5" />
