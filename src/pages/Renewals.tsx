@@ -386,50 +386,70 @@ const Renewals = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="rounded-xl border bg-card p-5 flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            <AlertTriangle className="w-4 h-4 text-status-error" />
-            <span>Critical</span>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-status-error/10">
+              <AlertTriangle className="w-4 h-4 text-status-error" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">Critical</span>
           </div>
-          <p className="text-3xl font-bold text-status-error tabular-nums">{criticalRenewals.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">&lt;30 days</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold text-status-error">{criticalRenewals.length}</span>
+            <span className="text-xs text-muted-foreground">&lt;30 days</span>
+          </div>
         </div>
         
-        <div className="rounded-xl border bg-card p-5 flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            <Bell className="w-4 h-4 text-status-warning" />
-            <span>Urgent</span>
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-status-warning/10">
+              <Bell className="w-4 h-4 text-status-warning" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">Urgent</span>
           </div>
-          <p className="text-3xl font-bold text-status-warning tabular-nums">{urgentRenewals.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">30-90 days</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold text-status-warning">{urgentRenewals.length}</span>
+            <span className="text-xs text-muted-foreground">30-90 days</span>
+          </div>
         </div>
         
-        <div className="rounded-xl border bg-card p-5 flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            <Calendar className="w-4 h-4 text-primary" />
-            <span>Upcoming</span>
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-primary/10">
+              <Calendar className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">Upcoming</span>
           </div>
-          <p className="text-3xl font-bold tabular-nums">{upcomingRenewals.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">&gt;90 days</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold">{upcomingRenewals.length}</span>
+            <span className="text-xs text-muted-foreground">&gt;90 days</span>
+          </div>
         </div>
         
-        <div className="rounded-xl border bg-card p-5 flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            <DollarSign className="w-4 h-4 text-primary" />
-            <span>At-Risk Value</span>
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-primary/10">
+              <DollarSign className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">At-Risk Value</span>
           </div>
-          <p className="text-3xl font-bold tabular-nums">{formatCurrency(totalUpcomingValue)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Next 90 days</p>
+          <div className="flex flex-col">
+            <span className="text-xl font-semibold truncate">{formatCurrency(totalUpcomingValue)}</span>
+            <span className="text-xs text-muted-foreground">Next 90 days</span>
+          </div>
         </div>
         
-        <div className="rounded-xl border bg-card p-5 flex flex-col">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            <span>Avg Usage</span>
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-primary/10">
+              <TrendingUp className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">Avg Usage</span>
           </div>
-          <p className="text-3xl font-bold tabular-nums">{avgUsage}%</p>
-          <p className="text-xs text-muted-foreground mt-1">Across contracts</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-semibold">{avgUsage}%</span>
+            <span className="text-xs text-muted-foreground">utilization</span>
+          </div>
         </div>
       </div>
 
