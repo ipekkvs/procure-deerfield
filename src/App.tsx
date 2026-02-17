@@ -13,6 +13,7 @@ import Renewals from "./pages/Renewals";
 import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
 import Reports from "./pages/Reports";
+import DemoScript from "./pages/DemoScript";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -86,6 +87,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <Reports />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/demo-script"
+              element={
+                <AppLayout>
+                  <DemoScript />
                 </AppLayout>
               }
             />
